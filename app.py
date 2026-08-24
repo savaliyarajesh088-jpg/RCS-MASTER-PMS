@@ -311,43 +311,69 @@ def get_momentum_level(result):
 # CHART
 # =========================================================
 
-def show_chart(symbol):
+# =========================================================
+# 📊 INTERACTIVE PRICE CHART
+# =========================================================
 
-    try:
+st.markdown(
+    '<div class="section-title">📊 Price Chart</div>',
+    unsafe_allow_html=True
+)
 
-        ticker = (
-            symbol
-            if symbol.endswith(".NS")
-            else symbol + ".NS"
+try:
+
+    import plotly.graph_objects as go
+
+    chart_ticker = (
+        symbol if symbol.endswith(".NS")
+        else symbol + ".NS"
+    )
+
+    chart_data = yf.download(
+        chart_ticker,
+        period="1y",
+        interval="1d",
+        auto_adjust=False,
+        progress=False
+    )
+
+    if isinstance(chart_data.columns, pd.MultiIndex):
+        chart_data.columns = (
+            chart_data.columns
+            .get_level_values(0)
         )
 
-        chart_data = yf.download(
-            ticker,
-            period="1y",
-            interval="1d",
-            auto_adjust=False,
-            progress=False
+    chart_data = chart_data.dropna()
+
+    if not chart_data.empty:
+
+        # -----------------------------
+        # EMA
+        # -----------------------------
+
+        chart_data["EMA20"] = (
+            chart_data["Close"]
+            .ewm(span=20, adjust=False)
+            .mean()
         )
 
-        if chart_data.empty:
-            st.warning("ચાર્ટ ડેટા ઉપલબ્ધ નથી.")
-            return
+        chart_data["EMA50"] = (
+            chart_data["Close"]
+            .ewm(span=50, adjust=False)
+            .mean()
+        )
 
-        if isinstance(
-            chart_data.columns,
-            pd.MultiIndex
-        ):
-            chart_data.columns = (
-                chart_data.columns
-                .get_level_values(0)
-            )
-
-        chart_data = chart_data.dropna()
-
-        if chart_data.empty:
-            return
+        chart_data["EMA200"] = (
+            chart_data["Close"]
+            .ewm(span=200, adjust=False)
+            .mean()
+        )
 
         fig = go.Figure()
+
+        # -----------------------------
+        # PRICE
+        # -----------------------------
 
         fig.add_trace(
             go.Candlestick(
@@ -360,56 +386,233 @@ def show_chart(symbol):
             )
         )
 
-        close = chart_data["Close"]
+        # -----------------------------
+        # EMA 20
+        # -----------------------------
 
         fig.add_trace(
             go.Scatter(
                 x=chart_data.index,
-                y=close.ewm(
-                    span=20,
-                    adjust=False
-                ).mean(),
+                y=chart_data["EMA20"],
                 name="EMA 20",
-                line=dict(width=1)
+                mode="lines",
+                line=dict(width=1.5)
             )
         )
+
+        # -----------------------------
+        # EMA 50
+        # -----------------------------
 
         fig.add_trace(
             go.Scatter(
                 x=chart_data.index,
-                y=close.ewm(
-                    span=50,
-                    adjust=False
-                ).mean(),
+                y=chart_data["EMA50"],
                 name="EMA 50",
-                line=dict(width=1)
+                mode="lines",
+                line=dict(width=1.5)
             )
         )
+
+        # -----------------------------
+        # EMA 200
+        # -----------------------------
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA200"],
+                name="EMA 200",
+                mode="lines",
+                line=dict(width=1.5)
+            )
+        )
+
+        # -----------------------------
+        # CURRENT PRICE
+        # -----------------------------
+
+        cmp_value = float(
+            result.get("CMP", 0)
+        )
+
+        fig.add_hline(
+            y=cmp_value,
+            line_dash="dot",
+            annotation_text=f"CMP ₹{cmp_value:.2f}",
+            annotation_position="top right"
+        )
+
+        # -----------------------------
+        # STOP LOSS
+        # -----------------------------
+
+        stop_loss_value = result.get(
+            "STOP_LOSS"
+        )
+
+        if stop_loss_value is not None:
+
+            fig.add_hline(
+                y=float(stop_loss_value),
+                line_dash="dash",
+                annotation_text=(
+                    f"SL ₹{float(stop_loss_value):.2f}"
+                ),
+                annotation_position="bottom right"
+            )
+
+        # -----------------------------
+        # SWING TARGET
+        # -----------------------------
+
+        swing_target = result.get(
+            "SWING_TARGET"
+        )
+
+        if swing_target is not None:
+
+            fig.add_hline(
+                y=float(swing_target),
+                line_dash="dash",
+                annotation_text=(
+                    f"Swing ₹{float(swing_target):.2f}"
+                ),
+                annotation_position="top left"
+            )
+
+        # -----------------------------
+        # LONG TERM TARGET
+        # -----------------------------
+
+        long_target = result.get(
+            "LONG_TERM_TARGET"
+        )
+
+        if long_target is not None:
+
+            fig.add_hline(
+                y=float(long_target),
+                line_dash="dash",
+                annotation_text=(
+                    f"Long ₹{float(long_target):.2f}"
+                ),
+                annotation_position="top left"
+            )
+
+        # -----------------------------
+        # RANGE SELECTOR
+        # -----------------------------
 
         fig.update_layout(
-            height=430,
+
+            height=520,
+
             margin=dict(
-                l=5,
-                r=5,
-                t=25,
-                b=5
+                l=10,
+                r=10,
+                t=45,
+                b=10
             ),
-            xaxis_rangeslider_visible=False,
+
+            xaxis=dict(
+
+                rangeslider=dict(
+                    visible=True,
+                    thickness=0.08
+                ),
+
+                rangeselector=dict(
+                    buttons=[
+                        dict(
+                            count=1,
+                            label="1M",
+                            step="month",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            count=3,
+                            label="3M",
+                            step="month",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            count=6,
+                            label="6M",
+                            step="month",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            count=1,
+                            label="1Y",
+                            step="year",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            step="all",
+                            label="ALL"
+                        )
+                    ]
+                ),
+
+                type="date"
+            ),
+
+            yaxis=dict(
+                fixedrange=False,
+                autorange=True
+            ),
+
+            dragmode="pan",
+
+            hovermode="x unified",
+
+            showlegend=True,
+
             legend=dict(
-                orientation="h"
-            )
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="left",
+                x=0
+            ),
+
+            xaxis_rangeslider_visible=True
         )
+
+        # -----------------------------
+        # MOBILE CONFIG
+        # -----------------------------
+
+        config = {
+            "displayModeBar": True,
+            "displaylogo": False,
+            "scrollZoom": True,
+            "doubleClick": "reset",
+            "responsive": True,
+            "modeBarButtonsToRemove": [
+                "lasso2d",
+                "select2d"
+            ]
+        }
 
         st.plotly_chart(
             fig,
-            use_container_width=True
+            use_container_width=True,
+            config=config
         )
 
-    except Exception as error:
+    else:
 
         st.warning(
-            f"ચાર્ટ error: {error}"
+            "Chart માટે historical data ઉપલબ્ધ નથી."
         )
+
+except Exception as chart_error:
+
+    st.warning(
+        f"Chart loading error: {chart_error}"
+    )
 
 
 # =========================================================
