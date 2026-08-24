@@ -1,368 +1,639 @@
-import yfinance as yf
+import streamlit as st
 import pandas as pd
 
-
-def safe_number(value):
-    try:
-        if value is None:
-            return None
-
-        value = float(value)
-
-        if pd.isna(value):
-            return None
-
-        return value
-
-    except Exception:
-        return None
+from src.nse_data import fetch_nse_data
+from src.fundamental_engine import fetch_fundamental_data
 
 
-def growth_score(value):
-    if value is None:
-        return 0
+# =========================================================
+# PAGE CONFIG
+# =========================================================
 
-    if value >= 20:
-        return 20
-    elif value >= 12:
-        return 15
-    elif value >= 5:
-        return 10
-    elif value >= 0:
-        return 5
-
-    return 0
+st.set_page_config(
+    page_title="RCS MASTER PMS",
+    page_icon="🏦",
+    layout="wide"
+)
 
 
-def quality_score(roe, roce, debt):
+# =========================================================
+# HEADER
+# =========================================================
 
-    score = 0
+st.title("🏦 RCS MASTER PMS")
+st.subheader(
+    "Portfolio Review & Wealth Creation System"
+)
 
-    if roe is not None:
-
-        if roe >= 20:
-            score += 15
-        elif roe >= 15:
-            score += 12
-        elif roe >= 10:
-            score += 8
-        elif roe >= 0:
-            score += 4
-
-    if roce is not None:
-
-        if roce >= 20:
-            score += 15
-        elif roce >= 15:
-            score += 12
-        elif roce >= 10:
-            score += 8
-        elif roce >= 0:
-            score += 4
-
-    if debt is not None:
-
-        if debt <= 0.5:
-            score += 10
-        elif debt <= 1:
-            score += 7
-        elif debt <= 2:
-            score += 4
-
-    return min(score, 40)
+st.divider()
 
 
-def fetch_fundamental_data(symbol):
+# =========================================================
+# PORTFOLIO
+# =========================================================
 
-    symbol = symbol.strip().upper()
+st.header("📁 Portfolio")
 
-    ticker_map = {
-        "CEMPRO": "CEMPRO.NS",
-        "SHRIRAMFIN": "SHRIRAMFIN.NS"
-    }
+try:
 
-    ticker = ticker_map.get(
-        symbol,
-        symbol if symbol.endswith(".NS")
-        else symbol + ".NS"
+    portfolio = pd.read_csv(
+        "portfolio.csv"
     )
 
-    try:
+except Exception as error:
 
-        stock = yf.Ticker(ticker)
+    st.error(
+        f"Portfolio loading error: {error}"
+    )
 
-        info = stock.info
+    portfolio = pd.DataFrame()
 
-        if not info:
 
-            return {
-                "SYMBOL": symbol,
-                "FUNDAMENTAL_STATUS": "NO_DATA"
-            }
+if portfolio.empty:
 
-        revenue_growth = safe_number(
-            info.get("revenueGrowth")
+    st.warning(
+        "Portfolio data not available."
+    )
+
+    st.stop()
+
+
+st.dataframe(
+    portfolio,
+    use_container_width=True
+)
+
+st.divider()
+
+
+# =========================================================
+# NSE + TECHNICAL
+# =========================================================
+
+st.header(
+    "📈 NSE & Technical Analysis"
+)
+
+
+for symbol in portfolio["SYMBOL"]:
+
+    symbol = str(symbol).strip().upper()
+
+    # =====================================================
+    # NSE DATA
+    # =====================================================
+
+    result = fetch_nse_data(
+        symbol
+    )
+
+    st.subheader(
+        f"📌 {symbol}"
+    )
+
+    if result.get("STATUS") != "FRESH":
+
+        st.error(
+            f"NSE Data Error: "
+            f"{result.get('STATUS', '--')}"
         )
 
-        profit_growth = safe_number(
-            info.get("earningsGrowth")
+        continue
+
+
+    # =====================================================
+    # PRICE
+    # =====================================================
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+
+        st.metric(
+            "CMP",
+            f"₹{result.get('CMP', '--')}"
         )
 
-        roe = safe_number(
-            info.get("returnOnEquity")
+    with c2:
+
+        st.metric(
+            "Change %",
+            f"{result.get('CHANGE_%', '--')}%"
         )
 
-        roa = safe_number(
-            info.get("returnOnAssets")
+
+    # =====================================================
+    # EMA
+    # =====================================================
+
+    st.write("### 📊 EMA")
+
+    e1, e2, e3, e4, e5 = st.columns(5)
+
+    e1.metric(
+        "EMA 10",
+        f"₹{result.get('EMA_10', '--')}"
+    )
+
+    e2.metric(
+        "EMA 20",
+        f"₹{result.get('EMA_20', '--')}"
+    )
+
+    e3.metric(
+        "EMA 50",
+        f"₹{result.get('EMA_50', '--')}"
+    )
+
+    e4.metric(
+        "EMA 100",
+        f"₹{result.get('EMA_100', '--')}"
+    )
+
+    e5.metric(
+        "EMA 200",
+        f"₹{result.get('EMA_200', '--')}"
+    )
+
+    st.write(
+        f"EMA Alignment: "
+        f"**{result.get('EMA_ALIGNMENT', '--')}**"
+    )
+
+
+    # =====================================================
+    # MOMENTUM
+    # =====================================================
+
+    st.write("### 📉 Momentum")
+
+    m1, m2, m3 = st.columns(3)
+
+    m1.metric(
+        "RSI 14",
+        result.get(
+            "RSI_14",
+            "--"
+        )
+    )
+
+    m2.metric(
+        "MACD",
+        result.get(
+            "MACD",
+            "--"
+        )
+    )
+
+    m3.metric(
+        "MACD Histogram",
+        result.get(
+            "MACD_HIST",
+            "--"
+        )
+    )
+
+
+    # =====================================================
+    # SUPERTREND
+    # =====================================================
+
+    st.write("### 🔥 Supertrend")
+
+    s1, s2 = st.columns(2)
+
+    s1.metric(
+        "Supertrend",
+        f"₹{result.get('SUPERTREND', '--')}"
+    )
+
+    s2.metric(
+        "Trend",
+        result.get(
+            "SUPERTREND_STATUS",
+            "--"
+        )
+    )
+
+
+    # =====================================================
+    # VOLUME
+    # =====================================================
+
+    st.write(
+        "### 📦 Volume & Breakout"
+    )
+
+    v1, v2, v3 = st.columns(3)
+
+    v1.metric(
+        "Volume",
+        result.get(
+            "VOLUME",
+            "--"
+        )
+    )
+
+    v2.metric(
+        "Volume Ratio",
+        f"{result.get('VOLUME_RATIO', '--')}x"
+    )
+
+    v3.metric(
+        "Breakout",
+        result.get(
+            "VOLUME_BREAKOUT",
+            "--"
+        )
+    )
+
+
+    # =====================================================
+    # PRICE ACTION
+    # =====================================================
+
+    st.write(
+        "### 🕯️ Price Action"
+    )
+
+    p1, p2 = st.columns(2)
+
+    p1.metric(
+        "Price Action",
+        result.get(
+            "PRICE_ACTION",
+            "--"
+        )
+    )
+
+    p2.metric(
+        "Body %",
+        f"{result.get('BODY_%', '--')}%"
+    )
+
+
+    # =====================================================
+    # 52 WEEK
+    # =====================================================
+
+    h1, h2 = st.columns(2)
+
+    h1.metric(
+        "52W High",
+        f"₹{result.get('52W_HIGH', '--')}"
+    )
+
+    h2.metric(
+        "52W Low",
+        f"₹{result.get('52W_LOW', '--')}"
+    )
+
+
+    # =====================================================
+    # TECHNICAL SCORE
+    # =====================================================
+
+    st.write(
+        "### 🎯 Technical Status"
+    )
+
+    t1, t2 = st.columns(2)
+
+    t1.metric(
+        "Technical Score",
+        f"{result.get('TECHNICAL_SCORE', '--')}/100"
+    )
+
+    t2.metric(
+        "Technical Zone",
+        result.get(
+            "TECHNICAL_ZONE",
+            "--"
+        )
+    )
+
+
+    # =====================================================
+    # RISK
+    # =====================================================
+
+    st.write(
+        "### 🛡️ Risk Management"
+    )
+
+    r1, r2, r3 = st.columns(3)
+
+    r1.metric(
+        "ATR 14",
+        f"₹{result.get('ATR_14', '--')}"
+    )
+
+    r2.metric(
+        "Stop Loss",
+        f"₹{result.get('STOP_LOSS', '--')}"
+    )
+
+    r3.metric(
+        "Risk %",
+        f"{result.get('RISK_%', '--')}%"
+    )
+
+    r4, r5 = st.columns(2)
+
+    r4.metric(
+        "Risk Score",
+        f"{result.get('RISK_SCORE', '--')}/100"
+    )
+
+    r5.metric(
+        "Risk Level",
+        result.get(
+            "RISK_LEVEL",
+            "--"
+        )
+    )
+
+
+    # =====================================================
+    # FINAL TECHNICAL SIGNAL
+    # =====================================================
+
+    st.write(
+        "### 🚦 Technical Final Signal"
+    )
+
+    final_signal = result.get(
+        "FINAL_SIGNAL",
+        "WAIT"
+    )
+
+    if final_signal == "BUY":
+
+        st.success(
+            "🟢 BUY"
         )
 
-        debt_to_equity = safe_number(
-            info.get("debtToEquity")
+    elif final_signal == "HOLD":
+
+        st.info(
+            "🟡 HOLD"
         )
 
-        pe = safe_number(
-            info.get("trailingPE")
+    elif final_signal == "REDUCE":
+
+        st.warning(
+            "🟠 REDUCE"
         )
 
-        forward_pe = safe_number(
-            info.get("forwardPE")
+    elif final_signal == "EXIT":
+
+        st.error(
+            "🔴 EXIT"
         )
 
-        profit_margin = safe_number(
-            info.get("profitMargins")
+    else:
+
+        st.warning(
+            "🟡 WAIT"
         )
 
-        # Convert decimal growth values
-        if revenue_growth is not None:
-            revenue_growth *= 100
 
-        if profit_growth is not None:
-            profit_growth *= 100
+    # =====================================================
+    # DATA STATUS
+    # =====================================================
 
-        if roe is not None:
-            roe *= 100
+    st.caption(
+        f"Data Date: "
+        f"{result.get('DATA_DATE', '--')} | "
+        f"Status: "
+        f"{result.get('STATUS', '--')}"
+    )
 
-        if roa is not None:
-            roa *= 100
 
-        if profit_margin is not None:
-            profit_margin *= 100
+    # =====================================================
+    # FUNDAMENTAL ENGINE
+    # =====================================================
 
-        # =========================
-        # DATA QUALITY
-        # =========================
+    st.write(
+        "### 🏢 Fundamental Analysis"
+    )
 
-        fields = [
-            revenue_growth,
-            profit_growth,
-            roe,
-            roa,
-            debt_to_equity,
-            pe
-        ]
+    fundamental = fetch_fundamental_data(
+        symbol
+    )
 
-        available = sum(
-            x is not None
-            for x in fields
+
+    if (
+        fundamental.get(
+            "FUNDAMENTAL_STATUS"
+        )
+        == "FRESH"
+    ):
+
+        # -------------------------------------------------
+        # GROWTH
+        # -------------------------------------------------
+
+        f1, f2, f3 = st.columns(3)
+
+        f1.metric(
+            "Revenue Growth",
+            f"{fundamental.get('REVENUE_GROWTH_%', '--')}%"
         )
 
-        quality_pct = round(
-            available /
-            len(fields) *
-            100
+        f2.metric(
+            "Profit Growth",
+            f"{fundamental.get('PROFIT_GROWTH_%', '--')}%"
         )
 
-        if quality_pct >= 80:
-            data_quality = "HIGH"
-        elif quality_pct >= 50:
-            data_quality = "MEDIUM"
-        else:
-            data_quality = "LOW"
-
-        # =========================
-        # GROWTH SCORE
-        # =========================
-
-        revenue_score = growth_score(
-            revenue_growth
+        f3.metric(
+            "ROE",
+            f"{fundamental.get('ROE_%', '--')}%"
         )
 
-        profit_score = growth_score(
-            profit_growth
+
+        # -------------------------------------------------
+        # QUALITY
+        # -------------------------------------------------
+
+        f4, f5, f6 = st.columns(3)
+
+        f4.metric(
+            "ROA",
+            f"{fundamental.get('ROA_%', '--')}%"
         )
 
-        growth_score_total = min(
-            revenue_score +
-            profit_score,
-            40
+        f5.metric(
+            "Debt / Equity",
+            fundamental.get(
+                "DEBT_TO_EQUITY",
+                "--"
+            )
         )
 
-        # =========================
-        # QUALITY SCORE
-        # =========================
-
-        quality = quality_score(
-            roe,
-            None,
-            debt_to_equity
+        f6.metric(
+            "Profit Margin",
+            f"{fundamental.get('PROFIT_MARGIN_%', '--')}%"
         )
 
-        # =========================
+
+        # -------------------------------------------------
         # VALUATION
-        # =========================
+        # -------------------------------------------------
 
-        valuation_score = 0
-
-        if pe is not None:
-
-            if pe <= 15:
-                valuation_score = 20
-            elif pe <= 25:
-                valuation_score = 15
-            elif pe <= 40:
-                valuation_score = 10
-            elif pe <= 60:
-                valuation_score = 5
-
-        # =========================
-        # FUNDAMENTAL SCORE
-        # =========================
-
-        fundamental_score = min(
-            growth_score_total +
-            quality +
-            valuation_score,
-            100
+        st.write(
+            "### 💰 Valuation"
         )
 
-        if data_quality == "LOW":
+        q1, q2 = st.columns(2)
 
-            fundamental_zone = "DATA LIMITED"
+        q1.metric(
+            "PE",
+            fundamental.get(
+                "PE",
+                "--"
+            )
+        )
 
-        elif fundamental_score >= 75:
-
-            fundamental_zone = "STRONG"
-
-        elif fundamental_score >= 60:
-
-            fundamental_zone = "GOOD"
-
-        elif fundamental_score >= 40:
-
-            fundamental_zone = "AVERAGE"
-
-        else:
-
-            fundamental_zone = "WEAK"
-
-        return {
-
-            "SYMBOL": symbol,
-
-            "REVENUE_GROWTH_%":
-                None if revenue_growth is None
-                else round(
-                    revenue_growth,
-                    2
-                ),
-
-            "PROFIT_GROWTH_%":
-                None if profit_growth is None
-                else round(
-                    profit_growth,
-                    2
-                ),
-
-            "ROE_%":
-                None if roe is None
-                else round(
-                    roe,
-                    2
-                ),
-
-            "ROA_%":
-                None if roa is None
-                else round(
-                    roa,
-                    2
-                ),
-
-            "DEBT_TO_EQUITY":
-                None if debt_to_equity is None
-                else round(
-                    debt_to_equity,
-                    2
-                ),
-
-            "PE":
-                None if pe is None
-                else round(
-                    pe,
-                    2
-                ),
-
-            "FORWARD_PE":
-                None if forward_pe is None
-                else round(
-                    forward_pe,
-                    2
-                ),
-
-            "PROFIT_MARGIN_%":
-                None if profit_margin is None
-                else round(
-                    profit_margin,
-                    2
-                ),
-
-            "DATA_QUALITY_%":
-                quality_pct,
-
-            "DATA_QUALITY":
-                data_quality,
-
-            "GROWTH_SCORE":
-                growth_score_total,
-
-            "QUALITY_SCORE":
-                quality,
-
-            "VALUATION_SCORE":
-                valuation_score,
-
-            "FUNDAMENTAL_SCORE":
-                fundamental_score,
-
-            "FUNDAMENTAL_ZONE":
-                fundamental_zone,
-
-            "FUNDAMENTAL_STATUS":
-                "FRESH"
-        }
-
-    except Exception as error:
-
-        return {
-
-            "SYMBOL": symbol,
-
-            "FUNDAMENTAL_STATUS":
-                "DATA_ERROR",
-
-            "ERROR":
-                str(error)
-        }
+        q2.metric(
+            "Forward PE",
+            fundamental.get(
+                "FORWARD_PE",
+                "--"
+            )
+        )
 
 
-if __name__ == "__main__":
+        # -------------------------------------------------
+        # FUNDAMENTAL SCORE
+        # -------------------------------------------------
 
-    result = fetch_fundamental_data(
-        "CEMPRO"
-    )
+        st.write(
+            "### 🎯 Fundamental Score"
+        )
 
-    print(
-        "RCS MASTER PMS - "
-        "FUNDAMENTAL ENGINE"
-    )
+        fs1, fs2, fs3 = st.columns(3)
 
-    print(result)
+        fs1.metric(
+            "Fundamental Score",
+            f"{fundamental.get('FUNDAMENTAL_SCORE', '--')}/100"
+        )
+
+        fs2.metric(
+            "Fundamental Zone",
+            fundamental.get(
+                "FUNDAMENTAL_ZONE",
+                "--"
+            )
+        )
+
+        fs3.metric(
+            "Data Quality",
+            f"{fundamental.get('DATA_QUALITY_%', '--')}%"
+        )
+
+
+        # -------------------------------------------------
+        # SCORE BREAKDOWN
+        # -------------------------------------------------
+
+        st.write(
+            "### 📊 Fundamental Score Breakdown"
+        )
+
+        b1, b2, b3 = st.columns(3)
+
+        b1.metric(
+            "Growth Score",
+            f"{fundamental.get('GROWTH_SCORE', '--')}/40"
+        )
+
+        b2.metric(
+            "Quality Score",
+            f"{fundamental.get('QUALITY_SCORE', '--')}/40"
+        )
+
+        b3.metric(
+            "Valuation Score",
+            f"{fundamental.get('VALUATION_SCORE', '--')}/20"
+        )
+
+
+        st.caption(
+            f"Fundamental Data Quality: "
+            f"{fundamental.get('DATA_QUALITY', '--')}"
+        )
+
+
+    else:
+
+        st.warning(
+            "Fundamental data not available."
+        )
+
+        if fundamental.get(
+            "ERROR"
+        ):
+
+            st.caption(
+                fundamental.get(
+                    "ERROR"
+                )
+            )
+
+
+    st.divider()
+
+
+# =========================================================
+# PORTFOLIO SUMMARY
+# =========================================================
+
+st.header(
+    "📊 Portfolio Summary"
+)
+
+c1, c2, c3 = st.columns(3)
+
+c1.metric(
+    "Portfolio Value",
+    "₹ —"
+)
+
+c2.metric(
+    "Portfolio Return",
+    "—"
+)
+
+c3.metric(
+    "Portfolio Health",
+    "— / 100"
+)
+
+
+# =========================================================
+# CIO ACTION
+# =========================================================
+
+st.divider()
+
+st.header(
+    "🎯 CIO Action"
+)
+
+st.info(
+    "NSE + Technical + Risk + Fundamental "
+    "engines are connected. PMS Score and "
+    "CIO Decision Engine will be added next."
+)
+
+
+# =========================================================
+# FOOTER
+# =========================================================
+
+st.divider()
+
+st.write(
+    "RCS MASTER PMS | NSE Portfolio Decision System"
+)
