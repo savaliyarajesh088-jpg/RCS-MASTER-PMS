@@ -1,4 +1,4 @@
-import streamlit as st
+streamlit as st
 import pandas as pd
 
 st.set_page_config(
@@ -49,4 +49,4 @@ st.info(
 
 st.divider()
 
-st.caption("RCS MASTER PMS | NSE Portfolio Decision 
+st.caption("RCS MASTER PMS | NSE Portfolio Decision
