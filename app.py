@@ -663,7 +663,326 @@ for symbol in portfolio["SYMBOL"]:
     # =====================================================
     # PRICE CHART
     # =====================================================
+# =========================================================
+# 📊 PRICE CHART
+# =========================================================
 
+import plotly.graph_objects as go
+
+
+def build_price_chart(symbol):
+
+    symbol = str(symbol).strip().upper()
+
+    ticker = (
+        symbol
+        if symbol.endswith(".NS")
+        else symbol + ".NS"
+    )
+
+    try:
+
+        chart_data = yf.download(
+            ticker,
+            period="1y",
+            interval="1d",
+            auto_adjust=False,
+            progress=False
+        )
+
+        if chart_data.empty:
+            st.warning("📊 Chart માટે NSE data ઉપલબ્ધ નથી.")
+            return
+
+        if isinstance(chart_data.columns, pd.MultiIndex):
+            chart_data.columns = chart_data.columns.get_level_values(0)
+
+        chart_data = chart_data.dropna()
+
+        if chart_data.empty:
+            st.warning("📊 Chart data ખાલી છે.")
+            return
+
+        close = chart_data["Close"]
+
+        # =====================================================
+        # EMA
+        # =====================================================
+
+        chart_data["EMA10"] = close.ewm(
+            span=10,
+            adjust=False
+        ).mean()
+
+        chart_data["EMA20"] = close.ewm(
+            span=20,
+            adjust=False
+        ).mean()
+
+        chart_data["EMA50"] = close.ewm(
+            span=50,
+            adjust=False
+        ).mean()
+
+        chart_data["EMA100"] = close.ewm(
+            span=100,
+            adjust=False
+        ).mean()
+
+        chart_data["EMA200"] = close.ewm(
+            span=200,
+            adjust=False
+        ).mean()
+
+        # =====================================================
+        # ATR / TARGET / STOP LOSS
+        # =====================================================
+
+        atr_series = calculate_atr(
+            chart_data,
+            14
+        )
+
+        atr_value = float(atr_series.iloc[-1])
+
+        cmp = float(close.iloc[-1])
+
+        stop_loss = cmp - (2 * atr_value)
+
+        swing_target = cmp + (2 * atr_value)
+
+        long_term_target = cmp + (5 * atr_value)
+
+        high_52w = float(close.max())
+
+        low_52w = float(close.min())
+
+        # =====================================================
+        # FIGURE
+        # =====================================================
+
+        fig = go.Figure()
+
+        # =====================================================
+        # CANDLESTICK
+        # =====================================================
+
+        fig.add_trace(
+            go.Candlestick(
+                x=chart_data.index,
+                open=chart_data["Open"],
+                high=chart_data["High"],
+                low=chart_data["Low"],
+                close=chart_data["Close"],
+                name="PRICE"
+            )
+        )
+
+        # =====================================================
+        # EMA 10
+        # =====================================================
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA10"],
+                name="EMA 10",
+                mode="lines",
+                visible=True
+            )
+        )
+
+        # =====================================================
+        # EMA 20
+        # =====================================================
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA20"],
+                name="EMA 20",
+                mode="lines",
+                visible=True
+            )
+        )
+
+        # =====================================================
+        # EMA 50
+        # =====================================================
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA50"],
+                name="EMA 50",
+                mode="lines",
+                visible=True
+            )
+        )
+
+        # =====================================================
+        # EMA 100
+        # =====================================================
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA100"],
+                name="EMA 100",
+                mode="lines",
+                visible=False
+            )
+        )
+
+        # =====================================================
+        # EMA 200
+        # =====================================================
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA200"],
+                name="EMA 200",
+                mode="lines",
+                visible=False
+            )
+        )
+
+        # =====================================================
+        # STOP LOSS
+        # =====================================================
+
+        fig.add_hline(
+            y=stop_loss,
+            line_dash="dash",
+            annotation_text=f"SL ₹{stop_loss:.2f}"
+        )
+
+        # =====================================================
+        # SWING TARGET
+        # =====================================================
+
+        fig.add_hline(
+            y=swing_target,
+            line_dash="dot",
+            annotation_text=f"Swing ₹{swing_target:.2f}"
+        )
+
+        # =====================================================
+        # LONG TERM TARGET
+        # =====================================================
+
+        fig.add_hline(
+            y=long_term_target,
+            line_dash="dot",
+            annotation_text=f"Long ₹{long_term_target:.2f}"
+        )
+
+        # =====================================================
+        # 52W HIGH
+        # =====================================================
+
+        fig.add_hline(
+            y=high_52w,
+            line_dash="dashdot",
+            annotation_text=f"52W High ₹{high_52w:.2f}"
+        )
+
+        # =====================================================
+        # 52W LOW
+        # =====================================================
+
+        fig.add_hline(
+            y=low_52w,
+            line_dash="dashdot",
+            annotation_text=f"52W Low ₹{low_52w:.2f}"
+        )
+
+        # =====================================================
+        # LAYOUT
+        # =====================================================
+
+        fig.update_layout(
+            title=f"📈 {symbol} — Price Chart",
+            height=600,
+            hovermode="x unified",
+            dragmode="pan",
+            margin=dict(
+                l=10,
+                r=10,
+                t=60,
+                b=10
+            ),
+            xaxis=dict(
+                rangeslider=dict(
+                    visible=True
+                ),
+                rangeselector=dict(
+                    buttons=[
+                        dict(
+                            count=1,
+                            label="1M",
+                            step="month",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            count=3,
+                            label="3M",
+                            step="month",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            count=6,
+                            label="6M",
+                            step="month",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            count=1,
+                            label="1Y",
+                            step="year",
+                            stepmode="backward"
+                        ),
+                        dict(
+                            step="all",
+                            label="ALL"
+                        )
+                    ]
+                )
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                autorange=True
+            )
+        )
+
+        # =====================================================
+        # DISPLAY
+        # =====================================================
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "displaylogo": False,
+                "scrollZoom": True,
+                "doubleClick": "reset",
+                "responsive": True
+            }
+        )
+
+        st.caption(
+            f"📍 CMP ₹{cmp:.2f}  |  "
+            f"🛑 SL ₹{stop_loss:.2f}  |  "
+            f"🎯 Swing ₹{swing_target:.2f}  |  "
+            f"🎯 Long ₹{long_term_target:.2f}"
+        )
+
+    except Exception as error:
+
+        st.error(
+            f"📊 Chart Error: {type(error).__name__}: {error}"
+        )
     # =========================================================
 # 📊 ADVANCED INTERACTIVE PRICE CHART
 # =========================================================
