@@ -16,102 +16,43 @@ st.header("📁 Portfolio")
 
 try:
     portfolio = pd.read_csv("portfolio.csv")
-
-    st.dataframe(
-        portfolio,
-        use_container_width=True
-    )
-
+    st.dataframe(portfolio, use_container_width=True)
 except Exception:
     st.warning("Portfolio data not available yet.")
+    portfolio = pd.DataFrame()
 
 st.divider()
+
 st.header("📈 NSE Market Data")
 
 try:
-    import sys
-    import os
-
-    sys.path.append(
-        os.path.join(
-            os.path.dirname(__file__),
-            "src"
-        )
-    )
-
-    from nse_data import fetch_nse_data
+    from src.nse_data import fetch_nse_data
 
     if not portfolio.empty:
-        results = []
-
         for symbol in portfolio["SYMBOL"]:
-            results.append(
-                fetch_nse_data(str(symbol))
-            )
+            result = fetch_nse_data(str(symbol))
 
-        market_df = pd.DataFrame(results)
+            st.subheader(f"📌 {symbol}")
 
-        for _, row in market_df.iterrows():
+            st.write("CMP:", result.get("CMP", "--"))
+            st.write("Change:", result.get("CHANGE", "--"))
+            st.write("Change %:", result.get("CHANGE_%", "--"))
+            st.write("Volume:", result.get("VOLUME", "--"))
+            st.write("Volume Ratio:", result.get("VOLUME_RATIO", "--"))
+            st.write("52W High:", result.get("52W_HIGH", "--"))
+            st.write("52W Low:", result.get("52W_LOW", "--"))
+            st.write("Data Date:", result.get("DATA_DATE", "--"))
+            st.write("Status:", result.get("STATUS", "--"))
 
-    st.subheader(f"📌 {row['SYMBOL']}")
+            st.divider()
 
-    c1, c2 = st.columns(2)
-
-    with c1:
-        st.metric(
-            "CMP",
-            f"₹{row.get('CMP', '--')}"
-        )
-
-    with c2:
-        st.metric(
-            "Change %",
-            f"{row.get('CHANGE_%', '--')}%"
-        )
-
-    c3, c4 = st.columns(2)
-
-    with c3:
-        st.metric(
-            "Volume",
-            str(row.get('VOLUME', '--'))
-        )
-
-    with c4:
-        st.metric(
-            "Volume Ratio",
-            str(row.get('VOLUME_RATIO', '--'))
-        )
-
-    st.write(
-        f"52W High: ₹{row.get('52W_HIGH', '--')}"
-    )
-
-    st.write(
-        f"52W Low: ₹{row.get('52W_LOW', '--')}"
-    )
-
-    st.write(
-        f"Data Date: {row.get('DATA_DATE', '--')}"
-    )
-
-    st.write(
-        f"Status: {row.get('STATUS', '--')}"
-    )
-
-    st.divider()
-            
-
-        )
     else:
         st.warning("No portfolio stocks found.")
 
 except Exception as error:
-    st.error(
-        f"NSE data engine error: {error}"
-    )
+    st.error(f"NSE data engine error: {error}")
 
-st.divider()
+st.header("📊 Portfolio Summary")
 
 col1, col2, col3 = st.columns(3)
 
@@ -129,8 +70,8 @@ st.divider()
 st.header("🎯 CIO Action")
 
 st.info(
-    "Portfolio analysis will appear here "
-    "after the NSE and PMS engines are connected."
+    "NSE market data is connected. "
+    "Technical and PMS engines will be added next."
 )
 
 st.divider()
