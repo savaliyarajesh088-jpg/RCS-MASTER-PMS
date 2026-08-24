@@ -22,11 +22,20 @@ def fetch_nse_data(symbol):
 
     symbol = symbol.strip().upper()
 
-    ticker = (
-        symbol
-        if symbol.endswith(".NS")
-        else symbol + ".NS"
-    )
+    ticker_map = {
+    "CEMPRO": "CEMPRO.NS",
+    "SHRIRAMFIN": "SHRIRAMFIN.NS"
+}
+
+ticker = ticker_map.get(
+    symbol,
+    symbol if symbol.endswith(".NS")
+    else symbol + ".NS"
+)
+        
+        
+        
+    
 
     try:
 
