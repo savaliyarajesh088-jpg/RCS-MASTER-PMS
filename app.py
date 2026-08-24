@@ -26,6 +26,44 @@ except Exception:
     st.warning("Portfolio data not available yet.")
 
 st.divider()
+st.header("📈 NSE Market Data")
+
+try:
+    import sys
+    import os
+
+    sys.path.append(
+        os.path.join(
+            os.path.dirname(__file__),
+            "src"
+        )
+    )
+
+    from nse_data import fetch_nse_data
+
+    if not portfolio.empty:
+        results = []
+
+        for symbol in portfolio["SYMBOL"]:
+            results.append(
+                fetch_nse_data(str(symbol))
+            )
+
+        market_df = pd.DataFrame(results)
+
+        st.dataframe(
+            market_df,
+            use_container_width=True
+        )
+    else:
+        st.warning("No portfolio stocks found.")
+
+except Exception as error:
+    st.error(
+        f"NSE data engine error: {error}"
+    )
+
+st.divider()
 
 col1, col2, col3 = st.columns(3)
 
