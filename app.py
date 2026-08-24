@@ -1,50 +1,9 @@
-    "Portfolio Value",
-    "₹ —"
-)
-
-c2.metric(
-    "Portfolio Return",
-    "—"
-)
-
-c3.metric(
-    "Portfolio Health",
-    "— / 100"
-)
-
-
-# =========================================================
-# CIO ACTION
-# =========================================================
-
-st.divider()
-
-st.header("🎯 CIO Action")
-
-st.info(
-    "NSE + Technical + Risk + Fundamental "
-    "engines are connected. PMS Score and "
-    "CIO Decision Engine will be added next."
-)
-
-
-# =========================================================
-# FOOTER
-# =========================================================
-
-st.divider()
-
-st.write(
-    "RCS MASTER PMS import streamlit as st
+import streamlit as st
 import pandas as pd
 
 from src.nse_data import fetch_nse_data
 from src.fundamental_engine import fetch_fundamental_data
 
-
-# =========================================================
-# PAGE CONFIG
-# =========================================================
 
 st.set_page_config(
     page_title="RCS MASTER PMS",
@@ -53,38 +12,22 @@ st.set_page_config(
 )
 
 
-# =========================================================
-# HEADER
-# =========================================================
-
 st.title("🏦 RCS MASTER PMS")
-st.subheader(
-    "Portfolio Review & Wealth Creation System"
-)
-
+st.subheader("Portfolio Review & Wealth Creation System")
 st.divider()
 
-
-# =========================================================
-# PORTFOLIO
-# =========================================================
 
 st.header("📁 Portfolio")
 
 try:
     portfolio = pd.read_csv("portfolio.csv")
-
 except Exception as error:
-    st.error(
-        f"Portfolio loading error: {error}"
-    )
+    st.error(f"Portfolio loading error: {error}")
     portfolio = pd.DataFrame()
 
 
 if portfolio.empty:
-    st.warning(
-        "Portfolio data not available."
-    )
+    st.warning("Portfolio data not available.")
     st.stop()
 
 
@@ -96,124 +39,61 @@ st.dataframe(
 st.divider()
 
 
-# =========================================================
-# NSE + TECHNICAL
-# =========================================================
-
-st.header(
-    "📈 NSE & Technical Analysis"
-)
+st.header("📈 NSE & Technical Analysis")
 
 
 for symbol in portfolio["SYMBOL"]:
 
     symbol = str(symbol).strip().upper()
 
-    # =====================================================
-    # NSE DATA
-    # =====================================================
-
     result = fetch_nse_data(symbol)
 
-    st.subheader(
-        f"📌 {symbol}"
-    )
+    st.subheader(f"📌 {symbol}")
 
     if result.get("STATUS") != "FRESH":
-
         st.error(
             f"NSE Data Error: "
             f"{result.get('STATUS', '--')}"
         )
-
         continue
 
 
-    # =====================================================
-    # PRICE
-    # =====================================================
-
     c1, c2 = st.columns(2)
 
-    with c1:
-        st.metric(
-            "CMP",
-            f"₹{result.get('CMP', '--')}"
-        )
+    c1.metric(
+        "CMP",
+        f"₹{result.get('CMP', '--')}"
+    )
 
-    with c2:
-        st.metric(
-            "Change %",
-            f"{result.get('CHANGE_%', '--')}%"
-        )
+    c2.metric(
+        "Change %",
+        f"{result.get('CHANGE_%', '--')}%"
+    )
 
-
-    # =====================================================
-    # EMA
-    # =====================================================
 
     st.write("### 📊 EMA")
 
     e1, e2, e3, e4, e5 = st.columns(5)
 
-    e1.metric(
-        "EMA 10",
-        f"₹{result.get('EMA_10', '--')}"
-    )
-
-    e2.metric(
-        "EMA 20",
-        f"₹{result.get('EMA_20', '--')}"
-    )
-
-    e3.metric(
-        "EMA 50",
-        f"₹{result.get('EMA_50', '--')}"
-    )
-
-    e4.metric(
-        "EMA 100",
-        f"₹{result.get('EMA_100', '--')}"
-    )
-
-    e5.metric(
-        "EMA 200",
-        f"₹{result.get('EMA_200', '--')}"
-    )
+    e1.metric("EMA 10", f"₹{result.get('EMA_10', '--')}")
+    e2.metric("EMA 20", f"₹{result.get('EMA_20', '--')}")
+    e3.metric("EMA 50", f"₹{result.get('EMA_50', '--')}")
+    e4.metric("EMA 100", f"₹{result.get('EMA_100', '--')}")
+    e5.metric("EMA 200", f"₹{result.get('EMA_200', '--')}")
 
     st.write(
-        f"EMA Alignment: "
-        f"**{result.get('EMA_ALIGNMENT', '--')}**"
+        f"EMA Alignment: **{result.get('EMA_ALIGNMENT', '--')}**"
     )
 
-
-    # =====================================================
-    # MOMENTUM
-    # =====================================================
 
     st.write("### 📉 Momentum")
 
     m1, m2, m3 = st.columns(3)
 
-    m1.metric(
-        "RSI 14",
-        result.get("RSI_14", "--")
-    )
+    m1.metric("RSI 14", result.get("RSI_14", "--"))
+    m2.metric("MACD", result.get("MACD", "--"))
+    m3.metric("MACD Histogram", result.get("MACD_HIST", "--"))
 
-    m2.metric(
-        "MACD",
-        result.get("MACD", "--")
-    )
-
-    m3.metric(
-        "MACD Histogram",
-        result.get("MACD_HIST", "--")
-    )
-
-
-    # =====================================================
-    # SUPERTREND
-    # =====================================================
 
     st.write("### 🔥 Supertrend")
 
@@ -226,58 +106,32 @@ for symbol in portfolio["SYMBOL"]:
 
     s2.metric(
         "Trend",
-        result.get(
-            "SUPERTREND_STATUS",
-            "--"
-        )
+        result.get("SUPERTREND_STATUS", "--")
     )
 
 
-    # =====================================================
-    # VOLUME
-    # =====================================================
-
-    st.write(
-        "### 📦 Volume & Breakout"
-    )
+    st.write("### 📦 Volume & Breakout")
 
     v1, v2, v3 = st.columns(3)
 
-    v1.metric(
-        "Volume",
-        result.get("VOLUME", "--")
-    )
-
+    v1.metric("Volume", result.get("VOLUME", "--"))
     v2.metric(
         "Volume Ratio",
         f"{result.get('VOLUME_RATIO', '--')}x"
     )
-
     v3.metric(
         "Breakout",
-        result.get(
-            "VOLUME_BREAKOUT",
-            "--"
-        )
+        result.get("VOLUME_BREAKOUT", "--")
     )
 
 
-    # =====================================================
-    # PRICE ACTION
-    # =====================================================
-
-    st.write(
-        "### 🕯️ Price Action"
-    )
+    st.write("### 🕯️ Price Action")
 
     p1, p2 = st.columns(2)
 
     p1.metric(
         "Price Action",
-        result.get(
-            "PRICE_ACTION",
-            "--"
-        )
+        result.get("PRICE_ACTION", "--")
     )
 
     p2.metric(
@@ -285,10 +139,6 @@ for symbol in portfolio["SYMBOL"]:
         f"{result.get('BODY_%', '--')}%"
     )
 
-
-    # =====================================================
-    # 52 WEEK
-    # =====================================================
 
     h1, h2 = st.columns(2)
 
@@ -303,13 +153,7 @@ for symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
-    # TECHNICAL SCORE
-    # =====================================================
-
-    st.write(
-        "### 🎯 Technical Status"
-    )
+    st.write("### 🎯 Technical Status")
 
     t1, t2 = st.columns(2)
 
@@ -320,20 +164,11 @@ for symbol in portfolio["SYMBOL"]:
 
     t2.metric(
         "Technical Zone",
-        result.get(
-            "TECHNICAL_ZONE",
-            "--"
-        )
+        result.get("TECHNICAL_ZONE", "--")
     )
 
 
-    # =====================================================
-    # RISK
-    # =====================================================
-
-    st.write(
-        "### 🛡️ Risk Management"
-    )
+    st.write("### 🛡️ Risk Management")
 
     r1, r2, r3 = st.columns(3)
 
@@ -361,20 +196,11 @@ for symbol in portfolio["SYMBOL"]:
 
     r5.metric(
         "Risk Level",
-        result.get(
-            "RISK_LEVEL",
-            "--"
-        )
+        result.get("RISK_LEVEL", "--")
     )
 
 
-    # =====================================================
-    # FINAL TECHNICAL SIGNAL
-    # =====================================================
-
-    st.write(
-        "### 🚦 Technical Final Signal"
-    )
+    st.write("### 🚦 Technical Final Signal")
 
     final_signal = result.get(
         "FINAL_SIGNAL",
@@ -382,59 +208,33 @@ for symbol in portfolio["SYMBOL"]:
     )
 
     if final_signal == "BUY":
-
         st.success("🟢 BUY")
-
     elif final_signal == "HOLD":
-
         st.info("🟡 HOLD")
-
     elif final_signal == "REDUCE":
-
         st.warning("🟠 REDUCE")
-
     elif final_signal == "EXIT":
-
         st.error("🔴 EXIT")
-
     else:
-
         st.warning("🟡 WAIT")
 
 
-    # =====================================================
-    # DATA STATUS
-    # =====================================================
-
     st.caption(
-        f"Data Date: "
-        f"{result.get('DATA_DATE', '--')} | "
-        f"Status: "
-        f"{result.get('STATUS', '--')}"
+        f"Data Date: {result.get('DATA_DATE', '--')} | "
+        f"Status: {result.get('STATUS', '--')}"
     )
 
 
     # =====================================================
-    # FUNDAMENTAL ENGINE
+    # FUNDAMENTAL
     # =====================================================
 
-    st.write(
-        "### 🏢 Fundamental Analysis"
-    )
+    st.write("### 🏢 Fundamental Analysis")
 
     fundamental = fetch_fundamental_data(symbol)
 
 
-    if (
-        fundamental.get(
-            "FUNDAMENTAL_STATUS"
-        )
-        == "FRESH"
-    ):
-
-        # -------------------------------------------------
-        # GROWTH
-        # -------------------------------------------------
+    if fundamental.get("FUNDAMENTAL_STATUS") == "FRESH":
 
         st.write("### 📈 Growth")
 
@@ -455,10 +255,6 @@ for symbol in portfolio["SYMBOL"]:
             f"{fundamental.get('ROE_%', '--')}%"
         )
 
-
-        # -------------------------------------------------
-        # QUALITY
-        # -------------------------------------------------
 
         st.write("### 🏆 Quality")
 
@@ -483,38 +279,22 @@ for symbol in portfolio["SYMBOL"]:
         )
 
 
-        # -------------------------------------------------
-        # VALUATION
-        # -------------------------------------------------
-
         st.write("### 💰 Valuation")
 
         q1, q2 = st.columns(2)
 
         q1.metric(
             "PE",
-            fundamental.get(
-                "PE",
-                "--"
-            )
+            fundamental.get("PE", "--")
         )
 
         q2.metric(
             "Forward PE",
-            fundamental.get(
-                "FORWARD_PE",
-                "--"
-            )
+            fundamental.get("FORWARD_PE", "--")
         )
 
 
-        # -------------------------------------------------
-        # FUNDAMENTAL SCORE
-        # -------------------------------------------------
-
-        st.write(
-            "### 🎯 Fundamental Score"
-        )
+        st.write("### 🎯 Fundamental Score")
 
         fs1, fs2, fs3 = st.columns(3)
 
@@ -537,13 +317,7 @@ for symbol in portfolio["SYMBOL"]:
         )
 
 
-        # -------------------------------------------------
-        # SCORE BREAKDOWN
-        # -------------------------------------------------
-
-        st.write(
-            "### 📊 Fundamental Score Breakdown"
-        )
+        st.write("### 📊 Fundamental Score Breakdown")
 
         b1, b2, b3 = st.columns(3)
 
@@ -568,7 +342,6 @@ for symbol in portfolio["SYMBOL"]:
             f"{fundamental.get('DATA_QUALITY', '--')}"
         )
 
-
     else:
 
         st.warning(
@@ -576,7 +349,6 @@ for symbol in portfolio["SYMBOL"]:
         )
 
         if fundamental.get("ERROR"):
-
             st.caption(
                 fundamental.get("ERROR")
             )
@@ -586,29 +358,11 @@ for symbol in portfolio["SYMBOL"]:
     # PMS MASTER SCORE
     # =====================================================
 
-    st.write(
-        "### 🏦 PMS Master Score"
-    )
-
-    technical_score = result.get(
-        "TECHNICAL_SCORE",
-        0
-    )
-
-    fundamental_score = fundamental.get(
-        "FUNDAMENTAL_SCORE",
-        0
-    )
-
-    risk_score = result.get(
-        "RISK_SCORE",
-        0
-    )
-
+    st.write("### 🏦 PMS Master Score")
 
     try:
         technical_score = float(
-            technical_score or 0
+            result.get("TECHNICAL_SCORE", 0) or 0
         )
     except Exception:
         technical_score = 0
@@ -616,7 +370,7 @@ for symbol in portfolio["SYMBOL"]:
 
     try:
         fundamental_score = float(
-            fundamental_score or 0
+            fundamental.get("FUNDAMENTAL_SCORE", 0) or 0
         )
     except Exception:
         fundamental_score = 0
@@ -624,58 +378,31 @@ for symbol in portfolio["SYMBOL"]:
 
     try:
         risk_score = float(
-            risk_score or 0
+            result.get("RISK_SCORE", 0) or 0
         )
     except Exception:
         risk_score = 0
 
 
-    # -----------------------------------------------------
-    # MASTER SCORE
-    # -----------------------------------------------------
-
     pms_score = round(
-        (
-            technical_score * 0.40
-        )
-        + (
-            fundamental_score * 0.40
-        )
-        + (
-            risk_score * 0.20
-        ),
+        technical_score * 0.40
+        + fundamental_score * 0.40
+        + risk_score * 0.20,
         1
     )
 
 
-    # -----------------------------------------------------
-    # CIO DECISION
-    # -----------------------------------------------------
-
     if pms_score >= 80:
-
         cio_decision = "ADD"
-
     elif pms_score >= 65:
-
         cio_decision = "HOLD"
-
     elif pms_score >= 50:
-
         cio_decision = "WAIT"
-
     elif pms_score >= 35:
-
         cio_decision = "REDUCE"
-
     else:
-
         cio_decision = "EXIT"
 
-
-    # -----------------------------------------------------
-    # PMS DISPLAY
-    # -----------------------------------------------------
 
     ps1, ps2, ps3 = st.columns(3)
 
@@ -685,21 +412,21 @@ for symbol in portfolio["SYMBOL"]:
     )
 
     ps2.metric(
-        "Technical Weight",
-        f"{technical_score:.1f} × 40%"
+        "Technical",
+        f"{technical_score:.1f}/100"
     )
 
     ps3.metric(
-        "Fundamental Weight",
-        f"{fundamental_score:.1f} × 40%"
+        "Fundamental",
+        f"{fundamental_score:.1f}/100"
     )
 
 
     ps4, ps5 = st.columns(2)
 
     ps4.metric(
-        "Risk Weight",
-        f"{risk_score:.1f} × 20%"
+        "Risk",
+        f"{risk_score:.1f}/100"
     )
 
     ps5.metric(
@@ -708,39 +435,20 @@ for symbol in portfolio["SYMBOL"]:
     )
 
 
-    # -----------------------------------------------------
-    # CIO SIGNAL DISPLAY
-    # -----------------------------------------------------
-
     if cio_decision == "ADD":
-
-        st.success(
-            "🟢 CIO ACTION — ADD"
-        )
+        st.success("🟢 CIO ACTION — ADD")
 
     elif cio_decision == "HOLD":
-
-        st.info(
-            "🟢 CIO ACTION — HOLD"
-        )
+        st.info("🟢 CIO ACTION — HOLD")
 
     elif cio_decision == "WAIT":
-
-        st.warning(
-            "🟡 CIO ACTION — WAIT"
-        )
+        st.warning("🟡 CIO ACTION — WAIT")
 
     elif cio_decision == "REDUCE":
-
-        st.warning(
-            "🟠 CIO ACTION — REDUCE"
-        )
+        st.warning("🟠 CIO ACTION — REDUCE")
 
     else:
-
-        st.error(
-            "🔴 CIO ACTION — EXIT"
-        )
+        st.error("🔴 CIO ACTION — EXIT")
 
 
     st.divider()
@@ -750,9 +458,7 @@ for symbol in portfolio["SYMBOL"]:
 # PORTFOLIO SUMMARY
 # =========================================================
 
-st.header(
-    "📊 Portfolio Summary"
-)
+st.header("📊 Portfolio Summary")
 
 c1, c2, c3 = st.columns(3)
 
@@ -778,14 +484,12 @@ c3.metric(
 
 st.divider()
 
-st.header(
-    "🎯 CIO Action"
-)
+st.header("🎯 CIO Action")
 
 st.info(
     "NSE + Technical + Risk + Fundamental "
     "engines are connected. PMS Master Score "
-    "and CIO Decision Engine are now active."
+    "and CIO Decision Engine are active."
 )
 
 
@@ -796,5 +500,5 @@ st.info(
 st.divider()
 
 st.write(
-    "RCS MASTER PMS | NSE Portfol
+    "RCS MASTER PMS | NSE Portfolio Decision System"
 )
