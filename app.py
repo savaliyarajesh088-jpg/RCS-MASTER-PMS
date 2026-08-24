@@ -49,4 +49,4 @@ st.info(
 
 st.divider()
 
-st.caption("RCS MASTER PMS | NSE Portfolio Decision System")
+st.caption("RCS MASTER PMS | NSE Portfolio Decision 
