@@ -51,9 +51,57 @@ try:
 
         market_df = pd.DataFrame(results)
 
-        st.dataframe(
-            market_df,
-            use_container_width=True
+        for _, row in market_df.iterrows():
+
+    st.subheader(f"📌 {row['SYMBOL']}")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.metric(
+            "CMP",
+            f"₹{row.get('CMP', '--')}"
+        )
+
+    with c2:
+        st.metric(
+            "Change %",
+            f"{row.get('CHANGE_%', '--')}%"
+        )
+
+    c3, c4 = st.columns(2)
+
+    with c3:
+        st.metric(
+            "Volume",
+            str(row.get('VOLUME', '--'))
+        )
+
+    with c4:
+        st.metric(
+            "Volume Ratio",
+            str(row.get('VOLUME_RATIO', '--'))
+        )
+
+    st.write(
+        f"52W High: ₹{row.get('52W_HIGH', '--')}"
+    )
+
+    st.write(
+        f"52W Low: ₹{row.get('52W_LOW', '--')}"
+    )
+
+    st.write(
+        f"Data Date: {row.get('DATA_DATE', '--')}"
+    )
+
+    st.write(
+        f"Status: {row.get('STATUS', '--')}"
+    )
+
+    st.divider()
+            
+
         )
     else:
         st.warning("No portfolio stocks found.")
