@@ -12,10 +12,6 @@ st.subheader("Portfolio Review & Wealth Creation System")
 
 st.divider()
 
-# =========================
-# PORTFOLIO
-# =========================
-
 st.header("📁 Portfolio")
 
 try:
@@ -24,19 +20,15 @@ except Exception as error:
     st.error(f"Portfolio loading error: {error}")
     portfolio = pd.DataFrame()
 
-if portfolio.empty:
-    st.warning("Portfolio data not available.")
-else:
+if not portfolio.empty:
     st.dataframe(
         portfolio,
         use_container_width=True
     )
+else:
+    st.warning("Portfolio data not available.")
 
 st.divider()
-
-# =========================
-# NSE + TECHNICAL DATA
-# =========================
 
 st.header("📈 NSE & Technical Analysis")
 
@@ -69,153 +61,278 @@ try:
 
                 continue
 
-            # -------------------------
+            # =========================
             # PRICE
-            # -------------------------
+            # =========================
 
-            col1, col2 = st.columns(2)
+            c1, c2 = st.columns(2)
 
-            with col1:
+            with c1:
                 st.metric(
                     "CMP",
                     f"₹{result.get('CMP', '--')}"
                 )
 
-            with col2:
+            with c2:
                 st.metric(
                     "Change %",
                     f"{result.get('CHANGE_%', '--')}%"
                 )
 
-            # -------------------------
+            # =========================
             # EMA
-            # -------------------------
+            # =========================
 
             st.write("### 📊 EMA")
 
-            ema_data = pd.DataFrame(
-                {
-                    "Indicator": [
-                        "EMA 10",
-                        "EMA 20",
-                        "EMA 50",
-                        "EMA 100",
-                        "EMA 200"
-                    ],
-                    "Value": [
-                        result.get("EMA_10", "--"),
-                        result.get("EMA_20", "--"),
-                        result.get("EMA_50", "--"),
-                        result.get("EMA_100", "--"),
-                        result.get("EMA_200", "--")
-                    ]
-                }
+            e1, e2, e3, e4, e5 = st.columns(5)
+
+            e1.metric(
+                "EMA 10",
+                f"₹{result.get('EMA_10', '--')}"
             )
 
-            st.dataframe(
-                ema_data,
-                use_container_width=True,
-                hide_index=True
+            e2.metric(
+                "EMA 20",
+                f"₹{result.get('EMA_20', '--')}"
             )
 
-            # -------------------------
-            # RSI + MACD
-            # -------------------------
+            e3.metric(
+                "EMA 50",
+                f"₹{result.get('EMA_50', '--')}"
+            )
+
+            e4.metric(
+                "EMA 100",
+                f"₹{result.get('EMA_100', '--')}"
+            )
+
+            e5.metric(
+                "EMA 200",
+                f"₹{result.get('EMA_200', '--')}"
+            )
+
+            st.write(
+                f"EMA Alignment: "
+                f"**{result.get('EMA_ALIGNMENT', '--')}**"
+            )
+
+            # =========================
+            # MOMENTUM
+            # =========================
 
             st.write("### 📉 Momentum")
 
-            col1, col2, col3 = st.columns(3)
+            m1, m2, m3 = st.columns(3)
 
-            with col1:
-                st.metric(
-                    "RSI 14",
-                    result.get("RSI_14", "--")
-                )
-
-            with col2:
-                st.metric(
-                    "MACD",
-                    result.get("MACD", "--")
-                )
-
-            with col3:
-                st.metric(
-                    "MACD Histogram",
-                    result.get(
-                        "MACD_HIST",
-                        "--"
-                    )
-                )
-
-            # -------------------------
-            # TECHNICAL STATUS
-            # -------------------------
-
-            st.write("### 🎯 Technical Status")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.metric(
-                    "Technical Score",
-                    f"{result.get('TECHNICAL_SCORE', '--')}/100"
-                )
-
-            with col2:
-                st.metric(
-                    "Technical Zone",
-                    result.get(
-                        "TECHNICAL_ZONE",
-                        "--"
-                    )
-                )
-
-            st.write(
-                "EMA Alignment:",
+            m1.metric(
+                "RSI 14",
                 result.get(
-                    "EMA_ALIGNMENT",
+                    "RSI_14",
                     "--"
                 )
             )
 
-            # -------------------------
-            # VOLUME + 52W
-            # -------------------------
-
-            st.write("### 📦 Volume & 52W")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-
-                st.write(
-                    f"Volume: "
-                    f"{result.get('VOLUME', '--')}"
+            m2.metric(
+                "MACD",
+                result.get(
+                    "MACD",
+                    "--"
                 )
-
-                st.write(
-                    f"Volume Ratio: "
-                    f"{result.get('VOLUME_RATIO', '--')}x"
-                )
-
-            with col2:
-
-                st.write(
-                    f"52W High: "
-                    f"₹{result.get('52W_HIGH', '--')}"
-                )
-
-                st.write(
-                    f"52W Low: "
-                    f"₹{result.get('52W_LOW', '--')}"
-                )
-
-            st.write(
-                f"Data Date: "
-                f"{result.get('DATA_DATE', '--')}"
             )
 
-            st.write(
+            m3.metric(
+                "MACD Histogram",
+                result.get(
+                    "MACD_HIST",
+                    "--"
+                )
+            )
+
+            # =========================
+            # SUPERTREND
+            # =========================
+
+            st.write("### 🔥 Supertrend")
+
+            s1, s2 = st.columns(2)
+
+            s1.metric(
+                "Supertrend",
+                f"₹{result.get('SUPERTREND', '--')}"
+            )
+
+            s2.metric(
+                "Trend",
+                result.get(
+                    "SUPERTREND_STATUS",
+                    "--"
+                )
+            )
+
+            # =========================
+            # VOLUME
+            # =========================
+
+            st.write("### 📦 Volume & Breakout")
+
+            v1, v2, v3 = st.columns(3)
+
+            v1.metric(
+                "Volume",
+                result.get(
+                    "VOLUME",
+                    "--"
+                )
+            )
+
+            v2.metric(
+                "Volume Ratio",
+                f"{result.get('VOLUME_RATIO', '--')}x"
+            )
+
+            v3.metric(
+                "Breakout",
+                result.get(
+                    "VOLUME_BREAKOUT",
+                    "--"
+                )
+            )
+
+            # =========================
+            # PRICE ACTION
+            # =========================
+
+            st.write("### 🕯️ Price Action")
+
+            p1, p2 = st.columns(2)
+
+            p1.metric(
+                "Price Action",
+                result.get(
+                    "PRICE_ACTION",
+                    "--"
+                )
+            )
+
+            p2.metric(
+                "Body %",
+                f"{result.get('BODY_%', '--')}%"
+            )
+
+            # =========================
+            # 52 WEEK
+            # =========================
+
+            h1, h2 = st.columns(2)
+
+            h1.metric(
+                "52W High",
+                f"₹{result.get('52W_HIGH', '--')}"
+            )
+
+            h2.metric(
+                "52W Low",
+                f"₹{result.get('52W_LOW', '--')}"
+            )
+
+            # =========================
+            # TECHNICAL SCORE
+            # =========================
+
+            st.write("### 🎯 Technical Status")
+
+            t1, t2 = st.columns(2)
+
+            t1.metric(
+                "Technical Score",
+                f"{result.get('TECHNICAL_SCORE', '--')}/100"
+            )
+
+            t2.metric(
+                "Technical Zone",
+                result.get(
+                    "TECHNICAL_ZONE",
+                    "--"
+                )
+            )
+
+            # =========================
+            # RISK
+            # =========================
+
+            st.write("### 🛡️ Risk Management")
+
+            r1, r2, r3 = st.columns(3)
+
+            r1.metric(
+                "ATR 14",
+                f"₹{result.get('ATR_14', '--')}"
+            )
+
+            r2.metric(
+                "Stop Loss",
+                f"₹{result.get('STOP_LOSS', '--')}"
+            )
+
+            r3.metric(
+                "Risk %",
+                f"{result.get('RISK_%', '--')}%"
+            )
+
+            r4, r5 = st.columns(2)
+
+            r4.metric(
+                "Risk Score",
+                f"{result.get('RISK_SCORE', '--')}/100"
+            )
+
+            r5.metric(
+                "Risk Level",
+                result.get(
+                    "RISK_LEVEL",
+                    "--"
+                )
+            )
+
+            # =========================
+            # FINAL SIGNAL
+            # =========================
+
+            st.write("### 🚦 Final Signal")
+
+            final_signal = result.get(
+                "FINAL_SIGNAL",
+                "WAIT"
+            )
+
+            if final_signal == "BUY":
+
+                st.success(
+                    f"🟢 {final_signal}"
+                )
+
+            elif final_signal == "HOLD":
+
+                st.info(
+                    f"🟡 {final_signal}"
+                )
+
+            elif final_signal == "REDUCE":
+
+                st.warning(
+                    f"🟠 {final_signal}"
+                )
+
+            else:
+
+                st.error(
+                    f"🔴 {final_signal}"
+                )
+
+            st.caption(
+                f"Data Date: "
+                f"{result.get('DATA_DATE', '--')} | "
                 f"Status: "
                 f"{result.get('STATUS', '--')}"
             )
@@ -228,44 +345,38 @@ except Exception as error:
         f"Technical engine error: {error}"
     )
 
+
 # =========================
 # PORTFOLIO SUMMARY
 # =========================
 
 st.header("📊 Portfolio Summary")
 
-col1, col2, col3 = st.columns(3)
+c1, c2, c3 = st.columns(3)
 
-with col1:
-    st.metric(
-        "Portfolio Value",
-        "₹ --"
-    )
+c1.metric(
+    "Portfolio Value",
+    "₹ —"
+)
 
-with col2:
-    st.metric(
-        "Portfolio Return",
-        "--"
-    )
+c2.metric(
+    "Portfolio Return",
+    "—"
+)
 
-with col3:
-    st.metric(
-        "Portfolio Health",
-        "-- / 100"
-    )
+c3.metric(
+    "Portfolio Health",
+    "— / 100"
+)
 
 st.divider()
-
-# =========================
-# CIO ACTION
-# =========================
 
 st.header("🎯 CIO Action")
 
 st.info(
-    "NSE and Technical Analysis are connected. "
-    "Fundamental, Risk and PMS decision engines "
-    "will be added next."
+    "NSE + Technical + Risk + Signal engines "
+    "are connected. Fundamental and PMS decision "
+    "engines will be added next."
 )
 
 st.divider()
