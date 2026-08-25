@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from src.nse_data import fetch_nse_data
 from src.fundamental_engine import fetch_fundamental_data
@@ -15,12 +16,12 @@ st.set_page_config(
     page_title="R.S MASTER STOCK GUIDE",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="collapsed"
 )
 
 
 # =========================================================
-# MOBILE UI
+# MOBILE / UI CSS
 # =========================================================
 
 st.markdown(
@@ -44,36 +45,36 @@ st.markdown(
 
     .sub-title {
         text-align: center;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         opacity: 0.72;
-        margin-bottom: 0.6rem;
+        margin-bottom: 0.55rem;
     }
 
     .stock-card {
-        border: 1px solid rgba(128,128,128,0.25);
+        border: 1px solid rgba(128,128,128,0.24);
         border-radius: 16px;
-        padding: 11px;
+        padding: 12px;
         margin-top: 8px;
         margin-bottom: 14px;
         background: rgba(128,128,128,0.035);
     }
 
     .score-card {
-        border: 1px solid rgba(128,128,128,0.25);
         border-radius: 14px;
-        padding: 10px;
+        padding: 11px;
         text-align: center;
-        background: rgba(128,128,128,0.04);
+        border: 1px solid rgba(128,128,128,0.24);
+        background: rgba(128,128,128,0.05);
     }
 
     .score-title {
         font-size: 0.68rem;
-        opacity: 0.70;
+        opacity: 0.7;
         font-weight: 800;
     }
 
     .score-value {
-        font-size: 1.4rem;
+        font-size: 1.45rem;
         font-weight: 900;
     }
 
@@ -122,8 +123,9 @@ st.markdown(
     @media (max-width: 640px) {
 
         .block-container {
-            padding-left: 0.30rem;
-            padding-right: 0.30rem;
+            padding-left: 0.3rem;
+            padding-right: 0.3rem;
+            padding-top: 0.3rem;
         }
 
         .main-title {
@@ -131,22 +133,22 @@ st.markdown(
         }
 
         .sub-title {
-            font-size: 0.65rem;
+            font-size: 0.66rem;
         }
 
         .score-value {
-            font-size: 1.15rem;
+            font-size: 1.18rem;
         }
 
         .section-title {
-            font-size: 0.90rem;
+            font-size: 0.9rem;
         }
 
     }
 
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 
@@ -155,9 +157,7 @@ st.markdown(
 # =========================================================
 
 def safe_float(value, default=0.0):
-
     try:
-
         if value is None:
             return default
 
@@ -167,78 +167,55 @@ def safe_float(value, default=0.0):
         return float(value)
 
     except Exception:
-
         return default
 
 
 def display_value(value):
-
-    if value is None:
-        return "—"
-
     try:
-
-        if pd.isna(value):
+        if value is None or pd.isna(value):
             return "—"
-
     except Exception:
         pass
 
     return value
 
 
-def money_value(value):
-
-    try:
-
-        if value is None:
-            return "—"
-
-        if pd.isna(value):
-            return "—"
-
-        return f"₹{float(value):,.2f}"
-
-    except Exception:
-
-        return "—"
-
-
 def pct_value(value):
-
     try:
-
-        if value is None:
-            return "—"
-
-        if pd.isna(value):
+        if value is None or pd.isna(value):
             return "—"
 
         return f"{float(value):.2f}%"
 
     except Exception:
-
         return "—"
 
 
-# =========================================================
-# ATR
-# =========================================================
+def money_value(value):
+    try:
+        if value is None or pd.isna(value):
+            return "—"
 
-def calculate_atr(data, period=14):
+        return f"₹{float(value):,.2f}"
+
+    except Exception:
+        return "—"
+
+
+def calculate_atr(df, period=14):
 
     high = pd.to_numeric(
-        data["High"],
+        df["High"],
         errors="coerce"
     )
 
     low = pd.to_numeric(
-        data["Low"],
+        df["Low"],
         errors="coerce"
     )
 
     close = pd.to_numeric(
-        data["Close"],
+        df["Close"],
         errors="coerce"
     )
 
@@ -255,95 +232,41 @@ def calculate_atr(data, period=14):
     ).abs()
 
     true_range = pd.concat(
-        [
-            tr1,
-            tr2,
-            tr3
-        ],
+        [tr1, tr2, tr3],
         axis=1
     ).max(axis=1)
 
-    atr = (
-        true_range
-        .rolling(
-            period,
-            min_periods=1
-        )
-        .mean()
+    return true_range.rolling(
+        period
+    ).mean()
+
+
+# =========================================================
+# ADVANCED MOBILE PRICE CHART
+# =========================================================
+
+def build_price_chart(
+    symbol,
+    stop_loss=None,
+    swing_target=None,
+    long_term_target=None
+):
+
+    symbol = str(symbol).strip().upper()
+
+    ticker = (
+        symbol
+        if symbol.endswith(".NS")
+        else symbol + ".NS"
     )
 
-    return atr.bfill().ffill()
-
-
-# =========================================================
-# CLEAN YFINANCE DATA
-# =========================================================
-
-def clean_chart_data(data):
-
-    if data is None:
-        return pd.DataFrame()
-
-    if data.empty:
-        return pd.DataFrame()
-
-    data = data.copy()
-
-    if isinstance(
-        data.columns,
-        pd.MultiIndex
-    ):
-
-        data.columns = (
-            data.columns
-            .get_level_values(0)
-        )
-
-    required = [
-        "Open",
-        "High",
-        "Low",
-        "Close"
-    ]
-
-    for column in required:
-
-        if column not in data.columns:
-
-            return pd.DataFrame()
-
-        data[column] = pd.to_numeric(
-            data[column],
-            errors="coerce"
-        )
-
-    if "Volume" in data.columns:
-
-        data["Volume"] = pd.to_numeric(
-            data["Volume"],
-            errors="coerce"
-        )
-
-    data = data.dropna(
-        subset=required
+    st.markdown(
+        "### 📊 Price Chart"
     )
-
-    return data
-
-
-# =========================================================
-# GET CHART DATA
-# =========================================================
-
-@st.cache_data(
-    ttl=900,
-    show_spinner=False
-)
-def get_chart_data(ticker):
 
     try:
 
-        data = yf.download(
+        chart_data = yf.download(
             ticker,
             period="1y",
             interval="1d",
@@ -351,522 +274,547 @@ def get_chart_data(ticker):
             progress=False
         )
 
-        return clean_chart_data(
-            data
-        )
-
-    except Exception:
-
-        return pd.DataFrame()
-
-
-# =========================================================
-# PRICE CHART
-# =========================================================
-
-def build_price_chart(
-    symbol,
-    cmp_value,
-    stop_loss,
-    swing_target,
-    long_term_target
-):
-
-    symbol = (
-        str(symbol)
-        .strip()
-        .upper()
-    )
-
-    ticker = (
-        symbol
-        if symbol.endswith(".NS")
-        else f"{symbol}.NS"
-    )
-
-    data = get_chart_data(
-        ticker
-    )
-
-    if data.empty:
-
-        st.warning(
-            "📊 Chart માટે NSE historical data ઉપલબ્ધ નથી."
-        )
-
-        return
-
-    close = data["Close"]
-
-    # -----------------------------------------------------
-    # EMA
-    # -----------------------------------------------------
-
-    data["EMA10"] = (
-        close
-        .ewm(
-            span=10,
-            adjust=False
-        )
-        .mean()
-    )
-
-    data["EMA20"] = (
-        close
-        .ewm(
-            span=20,
-            adjust=False
-        )
-        .mean()
-    )
-
-    data["EMA50"] = (
-        close
-        .ewm(
-            span=50,
-            adjust=False
-        )
-        .mean()
-    )
-
-    data["EMA100"] = (
-        close
-        .ewm(
-            span=100,
-            adjust=False
-        )
-        .mean()
-    )
-
-    data["EMA200"] = (
-        close
-        .ewm(
-            span=200,
-            adjust=False
-        )
-        .mean()
-    )
-
-    # -----------------------------------------------------
-    # VALUES
-    # -----------------------------------------------------
-
-    cmp = safe_float(
-        cmp_value,
-        close.iloc[-1]
-    )
-
-    atr_series = calculate_atr(
-        data,
-        14
-    )
-
-    atr = safe_float(
-        atr_series.iloc[-1]
-    )
-
-    sl = safe_float(
-        stop_loss,
-        cmp - 2 * atr
-    )
-
-    swing = safe_float(
-        swing_target,
-        cmp + 2 * atr
-    )
-
-    long_target = safe_float(
-        long_term_target,
-        cmp + 5 * atr
-    )
-
-    high_52 = safe_float(
-        close.max()
-    )
-
-    low_52 = safe_float(
-        close.min()
-    )
-
-    # -----------------------------------------------------
-    # FIGURE
-    # -----------------------------------------------------
-
-    fig = go.Figure()
-
-    # -----------------------------------------------------
-    # CANDLESTICK
-    # -----------------------------------------------------
-
-    fig.add_trace(
-        go.Candlestick(
-
-            x=data.index,
-
-            open=data["Open"],
-
-            high=data["High"],
-
-            low=data["Low"],
-
-            close=data["Close"],
-
-            name="PRICE",
-
-            increasing_line_color="#00C853",
-
-            decreasing_line_color="#FF1744",
-
-            increasing_fillcolor="#00C853",
-
-            decreasing_fillcolor="#FF1744"
-
-        )
-    )
-
-    # -----------------------------------------------------
-    # EMA 10
-    # -----------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter(
-
-            x=data.index,
-
-            y=data["EMA10"],
-
-            name="EMA 10",
-
-            mode="lines",
-
-            visible=True,
-
-            line=dict(
-                width=1
+        if chart_data.empty:
+            st.warning(
+                "📊 Chart માટે historical NSE data ઉપલબ્ધ નથી."
             )
-
-        )
-    )
-
-    # -----------------------------------------------------
-    # EMA 20
-    # -----------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter(
-
-            x=data.index,
-
-            y=data["EMA20"],
-
-            name="EMA 20",
-
-            mode="lines",
-
-            visible=True,
-
-            line=dict(
-                width=1
-            )
-
-        )
-    )
-
-    # -----------------------------------------------------
-    # EMA 50
-    # -----------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter(
-
-            x=data.index,
-
-            y=data["EMA50"],
-
-            name="EMA 50",
-
-            mode="lines",
-
-            visible=True,
-
-            line=dict(
-                width=1.4
-            )
-
-        )
-    )
-
-    # -----------------------------------------------------
-    # EMA 100
-    # -----------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter(
-
-            x=data.index,
-
-            y=data["EMA100"],
-
-            name="EMA 100",
-
-            mode="lines",
-
-            visible=False,
-
-            line=dict(
-                width=1.5
-            )
-
-        )
-    )
-
-    # -----------------------------------------------------
-    # EMA 200
-    # -----------------------------------------------------
-
-    fig.add_trace(
-        go.Scatter(
-
-            x=data.index,
-
-            y=data["EMA200"],
-
-            name="EMA 200",
-
-            mode="lines",
-
-            visible=False,
-
-            line=dict(
-                width=2
-            )
-
-        )
-    )
-
-    # -----------------------------------------------------
-    # CMP
-    # -----------------------------------------------------
-
-    fig.add_hline(
-        y=cmp,
-        line_dash="dot",
-        annotation_text=(
-            f"CMP ₹{cmp:.2f}"
-        ),
-        annotation_position="top right"
-    )
-
-    # -----------------------------------------------------
-    # STOP LOSS
-    # -----------------------------------------------------
-
-    fig.add_hline(
-        y=sl,
-        line_dash="dash",
-        annotation_text=(
-            f"SL ₹{sl:.2f}"
-        ),
-        annotation_position="bottom right"
-    )
-
-    # -----------------------------------------------------
-    # SWING
-    # -----------------------------------------------------
-
-    fig.add_hline(
-        y=swing,
-        line_dash="dot",
-        annotation_text=(
-            f"SWING ₹{swing:.2f}"
-        ),
-        annotation_position="top right"
-    )
-
-    # -----------------------------------------------------
-    # LONG TERM
-    # -----------------------------------------------------
-
-    fig.add_hline(
-        y=long_target,
-        line_dash="dot",
-        annotation_text=(
-            f"LONG ₹{long_target:.2f}"
-        ),
-        annotation_position="top left"
-    )
-
-    # -----------------------------------------------------
-    # 52 WEEK HIGH
-    # -----------------------------------------------------
-
-    fig.add_hline(
-        y=high_52,
-        line_dash="dashdot",
-        annotation_text=(
-            f"52W HIGH ₹{high_52:.2f}"
-        ),
-        annotation_position="top left"
-    )
-
-    # -----------------------------------------------------
-    # 52 WEEK LOW
-    # -----------------------------------------------------
-
-    fig.add_hline(
-        y=low_52,
-        line_dash="dashdot",
-        annotation_text=(
-            f"52W LOW ₹{low_52:.2f}"
-        ),
-        annotation_position="bottom left"
-    )
-
-    # -----------------------------------------------------
-    # LAYOUT
-    # -----------------------------------------------------
-
-    fig.update_layout(
-
-        title=dict(
-            text=(
-                f"📈 {symbol} — Interactive Price Chart"
-            ),
-            x=0.5,
-            xanchor="center"
-        ),
-
-        template="plotly_dark",
-
-        height=610,
-
-        hovermode="x unified",
-
-        dragmode="pan",
-
-        margin=dict(
-            l=8,
-            r=8,
-            t=62,
-            b=8
-        ),
-
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.01,
-            xanchor="center",
-            x=0.5
-        ),
-
-        xaxis=dict(
-
-            type="date",
-
-            showgrid=True,
-
-            rangeslider=dict(
-                visible=True,
-                thickness=0.08
-            ),
-
-            rangeselector=dict(
-
-                buttons=[
-
-                    dict(
-                        count=1,
-                        label="1M",
-                        step="month",
-                        stepmode="backward"
-                    ),
-
-                    dict(
-                        count=3,
-                        label="3M",
-                        step="month",
-                        stepmode="backward"
-                    ),
-
-                    dict(
-                        count=6,
-                        label="6M",
-                        step="month",
-                        stepmode="backward"
-                    ),
-
-                    dict(
-                        count=1,
-                        label="1Y",
-                        step="year",
-                        stepmode="backward"
-                    ),
-
-                    dict(
-                        step="all",
-                        label="ALL"
-                    )
-
-                ]
-
-            )
-
-        ),
-
-        yaxis=dict(
-            fixedrange=False,
-            autorange=True,
-            showgrid=True,
-            side="right"
-        )
-
-    )
-
-    # -----------------------------------------------------
-    # CHART CONFIG
-    # -----------------------------------------------------
-
-    config = {
-
-        "displayModeBar": True,
-
-        "displaylogo": False,
-
-        "scrollZoom": True,
-
-        "doubleClick": "reset",
-
-        "responsive": True,
-
-        "modeBarButtonsToRemove": [
-            "lasso2d",
-            "select2d"
+            return
+
+        # -------------------------------------------------
+        # MULTI INDEX PROTECTION
+        # -------------------------------------------------
+
+        if isinstance(
+            chart_data.columns,
+            pd.MultiIndex
+        ):
+
+            chart_data.columns = [
+                column[0]
+                for column in chart_data.columns
+            ]
+
+        required_columns = [
+            "Open",
+            "High",
+            "Low",
+            "Close",
+            "Volume"
         ]
 
-    }
+        missing = [
+            column
+            for column in required_columns
+            if column not in chart_data.columns
+        ]
 
-    # -----------------------------------------------------
-    # DISPLAY
-    # -----------------------------------------------------
+        if missing:
+            st.warning(
+                "Chart columns missing: "
+                + ", ".join(missing)
+            )
+            return
 
-    st.plotly_chart(
+        chart_data = chart_data[
+            required_columns
+        ].copy()
 
-        fig,
+        for column in required_columns:
 
-        use_container_width=True,
+            chart_data[column] = pd.to_numeric(
+                chart_data[column],
+                errors="coerce"
+            )
 
-        config=config,
+        chart_data = chart_data.dropna()
 
-        key=f"price_chart_{symbol}"
+        if len(chart_data) < 30:
+            st.warning(
+                "📊 Chart માટે પૂરતો historical data નથી."
+            )
+            return
 
-    )
+        # -------------------------------------------------
+        # EMA
+        # -------------------------------------------------
 
-    st.caption(
-        f"📍 CMP {money_value(cmp)} | "
-        f"🛑 SL {money_value(sl)} | "
-        f"🎯 Swing {money_value(swing)} | "
-        f"🚀 Long {money_value(long_target)}"
-    )
+        close = chart_data["Close"]
+
+        chart_data["EMA10"] = (
+            close.ewm(
+                span=10,
+                adjust=False
+            ).mean()
+        )
+
+        chart_data["EMA20"] = (
+            close.ewm(
+                span=20,
+                adjust=False
+            ).mean()
+        )
+
+        chart_data["EMA50"] = (
+            close.ewm(
+                span=50,
+                adjust=False
+            ).mean()
+        )
+
+        chart_data["EMA100"] = (
+            close.ewm(
+                span=100,
+                adjust=False
+            ).mean()
+        )
+
+        chart_data["EMA200"] = (
+            close.ewm(
+                span=200,
+                adjust=False
+            ).mean()
+        )
+
+        # -------------------------------------------------
+        # CURRENT VALUES
+        # -------------------------------------------------
+
+        cmp = float(
+            close.iloc[-1]
+        )
+
+        atr_series = calculate_atr(
+            chart_data,
+            14
+        )
+
+        atr_series = atr_series.dropna()
+
+        if atr_series.empty:
+
+            atr_value = (
+                abs(
+                    float(
+                        chart_data["High"].iloc[-1]
+                    )
+                    -
+                    float(
+                        chart_data["Low"].iloc[-1]
+                    )
+                )
+            )
+
+        else:
+
+            atr_value = float(
+                atr_series.iloc[-1]
+            )
+
+        if stop_loss is None:
+            stop_loss = cmp - (
+                2 * atr_value
+            )
+
+        if swing_target is None:
+            swing_target = cmp + (
+                2 * atr_value
+            )
+
+        if long_term_target is None:
+            long_term_target = cmp + (
+                5 * atr_value
+            )
+
+        stop_loss = safe_float(
+            stop_loss,
+            cmp - 2 * atr_value
+        )
+
+        swing_target = safe_float(
+            swing_target,
+            cmp + 2 * atr_value
+        )
+
+        long_term_target = safe_float(
+            long_term_target,
+            cmp + 5 * atr_value
+        )
+
+        # -------------------------------------------------
+        # 52 WEEK LEVELS
+        # -------------------------------------------------
+
+        high_52w = float(
+            chart_data["High"].max()
+        )
+
+        low_52w = float(
+            chart_data["Low"].min()
+        )
+
+        # -------------------------------------------------
+        # SUBTITLE
+        # -------------------------------------------------
+
+        st.caption(
+            "🤏 Mobile: pinch zoom • drag to move • "
+            "double tap reset • timeframe buttons available"
+        )
+
+        # -------------------------------------------------
+        # FIGURE
+        # -------------------------------------------------
+
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.025,
+            row_heights=[
+                0.78,
+                0.22
+            ]
+        )
+
+        # -------------------------------------------------
+        # CANDLESTICK
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Candlestick(
+                x=chart_data.index,
+                open=chart_data["Open"],
+                high=chart_data["High"],
+                low=chart_data["Low"],
+                close=chart_data["Close"],
+                name="PRICE",
+                increasing_line_color="#00C853",
+                decreasing_line_color="#FF1744",
+                increasing_fillcolor="#00C853",
+                decreasing_fillcolor="#FF1744"
+            ),
+            row=1,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # EMA 10
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA10"],
+                name="EMA 10",
+                mode="lines",
+                line=dict(width=1.2),
+                visible=True
+            ),
+            row=1,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # EMA 20
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA20"],
+                name="EMA 20",
+                mode="lines",
+                line=dict(width=1.2),
+                visible=True
+            ),
+            row=1,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # EMA 50
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA50"],
+                name="EMA 50",
+                mode="lines",
+                line=dict(width=1.5),
+                visible=True
+            ),
+            row=1,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # EMA 100
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA100"],
+                name="EMA 100",
+                mode="lines",
+                line=dict(width=1.5),
+                visible=False
+            ),
+            row=1,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # EMA 200
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Scatter(
+                x=chart_data.index,
+                y=chart_data["EMA200"],
+                name="EMA 200",
+                mode="lines",
+                line=dict(width=2),
+                visible=False
+            ),
+            row=1,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # VOLUME
+        # -------------------------------------------------
+
+        fig.add_trace(
+            go.Bar(
+                x=chart_data.index,
+                y=chart_data["Volume"],
+                name="Volume",
+                opacity=0.55
+            ),
+            row=2,
+            col=1
+        )
+
+        # -------------------------------------------------
+        # CMP
+        # -------------------------------------------------
+
+        fig.add_hline(
+            y=cmp,
+            row=1,
+            col=1,
+            line_dash="dot",
+            line_width=1,
+            annotation_text=f"CMP ₹{cmp:,.2f}",
+            annotation_position="top right"
+        )
+
+        # -------------------------------------------------
+        # STOP LOSS
+        # -------------------------------------------------
+
+        fig.add_hline(
+            y=stop_loss,
+            row=1,
+            col=1,
+            line_dash="dash",
+            line_width=1,
+            annotation_text=f"SL ₹{stop_loss:,.2f}",
+            annotation_position="bottom right"
+        )
+
+        # -------------------------------------------------
+        # SWING TARGET
+        # -------------------------------------------------
+
+        fig.add_hline(
+            y=swing_target,
+            row=1,
+            col=1,
+            line_dash="dot",
+            line_width=1,
+            annotation_text=f"SWING ₹{swing_target:,.2f}",
+            annotation_position="top left"
+        )
+
+        # -------------------------------------------------
+        # LONG TERM TARGET
+        # -------------------------------------------------
+
+        fig.add_hline(
+            y=long_term_target,
+            row=1,
+            col=1,
+            line_dash="dot",
+            line_width=1,
+            annotation_text=f"LONG ₹{long_term_target:,.2f}",
+            annotation_position="top left"
+        )
+
+        # -------------------------------------------------
+        # 52 WEEK HIGH
+        # -------------------------------------------------
+
+        fig.add_hline(
+            y=high_52w,
+            row=1,
+            col=1,
+            line_dash="dashdot",
+            line_width=1,
+            annotation_text=f"52W HIGH ₹{high_52w:,.2f}",
+            annotation_position="top"
+        )
+
+        # -------------------------------------------------
+        # 52 WEEK LOW
+        # -------------------------------------------------
+
+        fig.add_hline(
+            y=low_52w,
+            row=1,
+            col=1,
+            line_dash="dashdot",
+            line_width=1,
+            annotation_text=f"52W LOW ₹{low_52w:,.2f}",
+            annotation_position="bottom"
+        )
+
+        # -------------------------------------------------
+        # TIMEFRAME BUTTONS
+        # -------------------------------------------------
+
+        timeframe_buttons = [
+
+            dict(
+                count=1,
+                label="1M",
+                step="month",
+                stepmode="backward"
+            ),
+
+            dict(
+                count=3,
+                label="3M",
+                step="month",
+                stepmode="backward"
+            ),
+
+            dict(
+                count=6,
+                label="6M",
+                step="month",
+                stepmode="backward"
+            ),
+
+            dict(
+                count=1,
+                label="1Y",
+                step="year",
+                stepmode="backward"
+            ),
+
+            dict(
+                step="all",
+                label="ALL"
+            )
+        ]
+
+        # -------------------------------------------------
+        # LAYOUT
+        # -------------------------------------------------
+
+        fig.update_layout(
+            height=650,
+            template="plotly_dark",
+            hovermode="x unified",
+            dragmode="pan",
+            margin=dict(
+                l=5,
+                r=5,
+                t=55,
+                b=5
+            ),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.01,
+                xanchor="center",
+                x=0.5
+            ),
+            xaxis=dict(
+                type="date",
+                rangeslider=dict(
+                    visible=True,
+                    thickness=0.06
+                ),
+                rangeselector=dict(
+                    buttons=timeframe_buttons
+                ),
+                fixedrange=False
+            ),
+            xaxis2=dict(
+                type="date",
+                fixedrange=False
+            ),
+            yaxis=dict(
+                fixedrange=False,
+                autorange=True,
+                fixedrange=False
+            ),
+            yaxis2=dict(
+                fixedrange=False,
+                autorange=True,
+                fixedrange=False
+            )
+        )
+
+        # -------------------------------------------------
+        # MOBILE / DESKTOP CONTROLS
+        # -------------------------------------------------
+
+        config = {
+            "displaylogo": False,
+            "responsive": True,
+            "scrollZoom": True,
+            "doubleClick": "reset",
+            "displayModeBar": True,
+            "modeBarButtonsToRemove": [
+                "lasso2d",
+                "select2d"
+            ]
+        }
+
+        # -------------------------------------------------
+        # SHOW CHART
+        # -------------------------------------------------
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config=config,
+            key=f"price_chart_{symbol}"
+        )
+
+        # -------------------------------------------------
+        # CHART SUMMARY
+        # -------------------------------------------------
+
+        st.caption(
+            f"📍 CMP {money_value(cmp)}  |  "
+            f"🛑 SL {money_value(stop_loss)}  |  "
+            f"🎯 Swing {money_value(swing_target)}  |  "
+            f"🚀 Long {money_value(long_term_target)}"
+        )
+
+    except Exception as error:
+
+        st.error(
+            f"📊 Chart Error: "
+            f"{type(error).__name__}: {error}"
+        )
 
 
 # =========================================================
@@ -937,7 +885,7 @@ st.divider()
 
 
 # =========================================================
-# STOCK LOOP
+# STOCK PROCESSING
 # =========================================================
 
 all_scores = []
@@ -945,19 +893,13 @@ all_scores = []
 
 for raw_symbol in portfolio["SYMBOL"]:
 
-    symbol = (
-        str(raw_symbol)
-        .strip()
-        .upper()
-    )
+    symbol = str(
+        raw_symbol
+    ).strip().upper()
 
-    if not symbol:
-        continue
-
-
-    # =====================================================
+    # -----------------------------------------------------
     # NSE DATA
-    # =====================================================
+    # -----------------------------------------------------
 
     try:
 
@@ -980,7 +922,7 @@ for raw_symbol in portfolio["SYMBOL"]:
     ):
 
         st.error(
-            f"{symbol}: NSE engine returned invalid data."
+            f"{symbol}: NSE data format invalid."
         )
 
         continue
@@ -996,9 +938,9 @@ for raw_symbol in portfolio["SYMBOL"]:
         continue
 
 
-    # =====================================================
-    # FUNDAMENTAL
-    # =====================================================
+    # -----------------------------------------------------
+    # FUNDAMENTAL DATA
+    # -----------------------------------------------------
 
     try:
 
@@ -1010,11 +952,12 @@ for raw_symbol in portfolio["SYMBOL"]:
 
     except Exception as error:
 
-        fundamental = {}
-
-        st.warning(
-            f"{symbol}: Fundamental data unavailable — {error}"
-        )
+        fundamental = {
+            "FUNDAMENTAL_SCORE": 0,
+            "FUNDAMENTAL_ZONE": "POOR",
+            "DATA_QUALITY_%": 0,
+            "ERROR": str(error)
+        }
 
 
     if not isinstance(
@@ -1025,9 +968,9 @@ for raw_symbol in portfolio["SYMBOL"]:
         fundamental = {}
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # SCORES
-    # =====================================================
+    # -----------------------------------------------------
 
     technical_score = safe_float(
         result.get(
@@ -1048,6 +991,10 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
+    # -----------------------------------------------------
+    # MASTER SCORE
+    # -----------------------------------------------------
+
     master_score = round(
         (
             technical_score * 0.40
@@ -1060,44 +1007,64 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # DECISION
-    # =====================================================
+    # -----------------------------------------------------
 
     if master_score >= 75:
 
         decision = "BUY"
-        decision_gujarati = "🟢 ખરીદી / વધારો"
+
+        decision_gujarati = (
+            "🟢 ખરીદી / વધારો"
+        )
+
         decision_class = "green"
 
     elif master_score >= 60:
 
         decision = "HOLD"
-        decision_gujarati = "🟢 જાળવો"
+
+        decision_gujarati = (
+            "🟢 જાળવો"
+        )
+
         decision_class = "green"
 
     elif master_score >= 45:
 
         decision = "WAIT"
-        decision_gujarati = "🟡 રાહ જુઓ"
+
+        decision_gujarati = (
+            "🟡 રાહ જુઓ"
+        )
+
         decision_class = "yellow"
 
     elif master_score >= 30:
 
         decision = "REDUCE"
-        decision_gujarati = "🟠 ઘટાડો"
+
+        decision_gujarati = (
+            "🟠 ઘટાડો"
+        )
+
         decision_class = "orange"
 
     else:
 
         decision = "EXIT"
-        decision_gujarati = "🔴 બહાર નીકળો"
+
+        decision_gujarati = (
+            "🔴 બહાર નીકળો"
+        )
+
         decision_class = "red"
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # MARKET ZONE
-    # =====================================================
+    # -----------------------------------------------------
 
     if master_score >= 75:
 
@@ -1112,22 +1079,17 @@ for raw_symbol in portfolio["SYMBOL"]:
         market_zone = "🐻 BEAR"
 
 
-    # =====================================================
-    # PRICE / RISK
-    # =====================================================
+    # -----------------------------------------------------
+    # PRICE / ATR
+    # -----------------------------------------------------
 
     cmp = safe_float(
-        result.get(
-            "CMP"
-        )
+        result.get("CMP")
     )
 
     atr = safe_float(
-        result.get(
-            "ATR_14"
-        )
+        result.get("ATR_14")
     )
-
 
     stop_loss = safe_float(
         result.get(
@@ -1138,7 +1100,6 @@ for raw_symbol in portfolio["SYMBOL"]:
         )
     )
 
-
     swing_target = safe_float(
         result.get(
             "SWING_TARGET"
@@ -1147,7 +1108,6 @@ for raw_symbol in portfolio["SYMBOL"]:
             2 * atr
         )
     )
-
 
     long_term_target = safe_float(
         result.get(
@@ -1158,13 +1118,14 @@ for raw_symbol in portfolio["SYMBOL"]:
         )
     )
 
-
     momentum_level = safe_float(
         result.get(
             "MOMENTUM_LEVEL"
         ),
-        result.get(
-            "EMA_20",
+        safe_float(
+            result.get(
+                "EMA_20"
+            ),
             cmp
         )
     )
@@ -1184,9 +1145,9 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
-    # PRICE
-    # =====================================================
+    # -----------------------------------------------------
+    # BASIC PRICE
+    # -----------------------------------------------------
 
     c1, c2 = st.columns(2)
 
@@ -1209,6 +1170,10 @@ for raw_symbol in portfolio["SYMBOL"]:
         )
 
 
+    # -----------------------------------------------------
+    # MOMENTUM
+    # -----------------------------------------------------
+
     st.metric(
         "Momentum Level",
         money_value(
@@ -1217,9 +1182,9 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # MASTER SCORE
-    # =====================================================
+    # -----------------------------------------------------
 
     st.markdown(
         f"""
@@ -1235,7 +1200,17 @@ for raw_symbol in portfolio["SYMBOL"]:
         <div class="decision-card {decision_class}">
             🎯 {decision_gujarati}
         </div>
+        """,
+        unsafe_allow_html=True
+    )
 
+
+    # -----------------------------------------------------
+    # MARKET ZONE
+    # -----------------------------------------------------
+
+    st.markdown(
+        f"""
         <div class="decision-card blue">
             MARKET ZONE<br>
             {market_zone}
@@ -1245,9 +1220,9 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # TARGET & RISK
-    # =====================================================
+    # -----------------------------------------------------
 
     st.markdown(
         '<div class="section-title">'
@@ -1255,7 +1230,6 @@ for raw_symbol in portfolio["SYMBOL"]:
         '</div>',
         unsafe_allow_html=True
     )
-
 
     t1, t2, t3 = st.columns(3)
 
@@ -1322,20 +1296,11 @@ for raw_symbol in portfolio["SYMBOL"]:
     # PRICE CHART
     # =====================================================
 
-    st.markdown(
-        '<div class="section-title">'
-        '📊 Price Chart'
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-
     build_price_chart(
-        symbol,
-        cmp,
-        stop_loss,
-        swing_target,
-        long_term_target
+        symbol=symbol,
+        stop_loss=stop_loss,
+        swing_target=swing_target,
+        long_term_target=long_term_target
     )
 
 
@@ -1377,14 +1342,13 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # EMA
-    # =====================================================
+    # -----------------------------------------------------
 
     st.caption(
         "📊 EMA"
     )
-
 
     e1, e2, e3, e4, e5 = st.columns(5)
 
@@ -1440,9 +1404,9 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
-    # RSI / MACD
-    # =====================================================
+    # -----------------------------------------------------
+    # MOMENTUM
+    # -----------------------------------------------------
 
     m1, m2, m3 = st.columns(3)
 
@@ -1474,9 +1438,9 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # SUPERTREND
-    # =====================================================
+    # -----------------------------------------------------
 
     s1, s2 = st.columns(2)
 
@@ -1499,9 +1463,9 @@ for raw_symbol in portfolio["SYMBOL"]:
     )
 
 
-    # =====================================================
+    # -----------------------------------------------------
     # VOLUME
-    # =====================================================
+    # -----------------------------------------------------
 
     v1, v2, v3 = st.columns(3)
 
@@ -1636,7 +1600,7 @@ for raw_symbol in portfolio["SYMBOL"]:
 
 
     # =====================================================
-    # DATA DATE
+    # DATA
     # =====================================================
 
     st.caption(
@@ -1680,7 +1644,6 @@ Volume Breakout: {display_value(result.get("VOLUME_BREAKOUT"))}
 Data Date: {display_value(result.get("DATA_DATE"))}
 """
 
-
     st.code(
         copy_text.strip(),
         language="text"
@@ -1688,7 +1651,7 @@ Data Date: {display_value(result.get("DATA_DATE"))}
 
 
     # =====================================================
-    # SCORE STORAGE
+    # STORE SCORE
     # =====================================================
 
     all_scores.append(
@@ -1733,32 +1696,35 @@ if all_scores:
 
     buy_count = int(
         (
-            scores_df["DECISION"]
-            == "BUY"
+            scores_df[
+                "DECISION"
+            ] == "BUY"
         ).sum()
     )
 
     hold_count = int(
         (
-            scores_df["DECISION"]
-            == "HOLD"
+            scores_df[
+                "DECISION"
+            ] == "HOLD"
         ).sum()
     )
 
     reduce_count = int(
         (
-            scores_df["DECISION"]
-            == "REDUCE"
+            scores_df[
+                "DECISION"
+            ] == "REDUCE"
         ).sum()
     )
 
     exit_count = int(
         (
-            scores_df["DECISION"]
-            == "EXIT"
+            scores_df[
+                "DECISION"
+            ] == "EXIT"
         ).sum()
     )
-
 
     c1, c2, c3 = st.columns(3)
 
@@ -1777,12 +1743,10 @@ if all_scores:
         f"{buy_count} / {hold_count}"
     )
 
-
     st.caption(
         f"REDUCE: {reduce_count} | "
         f"EXIT: {exit_count}"
     )
-
 
 else:
 
